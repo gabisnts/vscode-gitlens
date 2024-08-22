@@ -209,7 +209,24 @@ export class SubscriptionService implements Disposable {
 		if (!cached) {
 			void (await promise);
 		}
-		return this._subscription;
+		const planData = {
+			id: SubscriptionPlanId.Pro,
+			name: getSubscriptionPlanName(SubscriptionPlanId.Pro),
+			bundle: true,
+			trialReactivationCount: 0,
+			cancelled: false,
+			startedOn: new Date(2001, 9, 11).toISOString(),
+			organizationId: undefined,
+		};
+
+		return {
+			...this._subscription,
+			plan: {
+				actual: planData,
+				effective: planData,
+			},
+			state: SubscriptionState.Paid,
+		};
 	}
 
 	@debug()
