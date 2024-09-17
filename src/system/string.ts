@@ -501,6 +501,12 @@ export function pad(s: string, before: number = 0, after: number = 0, padding: s
 	return `${before === 0 ? '' : padding.repeat(before)}${s}${after === 0 ? '' : padding.repeat(after)}`;
 }
 
+export function padOrTruncateEnd(s: string, maxLength: number, fillString?: string) {
+	if (s.length === maxLength) return s;
+	if (s.length > maxLength) return s.substring(0, maxLength);
+	return s.padEnd(maxLength, fillString);
+}
+
 export function pluralize(
 	s: string,
 	count: number,
@@ -538,7 +544,7 @@ export function splitLast(s: string, splitter: string) {
 	const index = s.lastIndexOf(splitter);
 	if (index === -1) return [s];
 
-	return [s.substr(index), s.substring(0, index - 1)];
+	return [s.substring(index), s.substring(0, index - 1)];
 }
 
 export function splitSingle(s: string, splitter: string) {

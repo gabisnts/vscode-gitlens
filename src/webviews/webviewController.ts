@@ -1,7 +1,8 @@
 import type { ViewBadge, Webview, WebviewPanel, WebviewView, WindowState } from 'vscode';
 import { Disposable, EventEmitter, Uri, ViewColumn, window, workspace } from 'vscode';
 import { getNonce } from '@env/crypto';
-import type { Commands, CustomEditorTypes, WebviewTypes, WebviewViewTypes } from '../constants';
+import type { Commands } from '../constants.commands';
+import type { CustomEditorTypes, WebviewTypes, WebviewViewTypes } from '../constants.views';
 import type { Container } from '../container';
 import { executeCommand, executeCoreCommand } from '../system/command';
 import { setContext } from '../system/context';
@@ -25,7 +26,7 @@ import type {
 } from './protocol';
 import {
 	DidChangeHostWindowFocusNotification,
-	DidChangeWebviewFocusNotfication as DidChangeWebviewFocusNotification,
+	DidChangeWebviewFocusNotification,
 	ExecuteCommand,
 	WebviewFocusChangedCommand,
 	WebviewReadyCommand,
@@ -566,9 +567,9 @@ export class WebviewController<
 					clearTimeout(timeout);
 					return s;
 				},
-				ex => {
+				(ex: unknown) => {
 					clearTimeout(timeout);
-					Logger.error(scope, ex);
+					Logger.error(ex, scope);
 					debugger;
 					return false;
 				},
@@ -658,13 +659,15 @@ export function replaceWebviewHtmlTokens<SerializedState>(
 	endOfBody?: string,
 ) {
 	return html.replace(
-		/#{(head|body|endOfBody|webviewId|webviewInstanceId|placement|cspSource|cspNonce|root|webroot)}/g,
+		/#{(head|body|endOfBody|webviewId|webviewInstanceId|placement|cspSource|cspNonce|root|webroot|state)}/g,
 		(_substring: string, token: string) => {
 			switch (token) {
 				case 'head':
 					return head ?? '';
 				case 'body':
 					return body ?? '';
+				case 'state':
+					return bootstrap != null ? JSON.stringify(bootstrap).replace(/"/g, '&quot;') : '';
 				case 'endOfBody':
 					return `${
 						bootstrap != null

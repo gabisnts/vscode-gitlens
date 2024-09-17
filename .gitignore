@@ -9,3 +9,5 @@ images/settings
 gitlens-*.vsix
 tsconfig*.tsbuildinfo
 .DS_Store
+test-results
+playwright-report

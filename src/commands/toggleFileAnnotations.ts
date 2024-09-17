@@ -1,7 +1,7 @@
 import type { TextEditor, TextEditorEdit, Uri } from 'vscode';
 import type { AnnotationContext } from '../annotations/annotationProvider';
 import type { ChangesAnnotationContext } from '../annotations/gutterChangesAnnotationProvider';
-import { Commands } from '../constants';
+import { Commands } from '../constants.commands';
 import type { Container } from '../container';
 import { showGenericErrorMessage } from '../messages';
 import { command } from '../system/command';
@@ -15,7 +15,7 @@ export class ClearFileAnnotationsCommand extends EditorCommand {
 		super([Commands.ClearFileAnnotations, Commands.ComputingFileAnnotations]);
 	}
 
-	async execute(editor: TextEditor | undefined, edit: TextEditorEdit, uri?: Uri): Promise<void> {
+	async execute(editor: TextEditor | undefined, _edit: TextEditorEdit, uri?: Uri): Promise<void> {
 		editor = getValidEditor(editor, uri);
 		if (editor == null) return;
 

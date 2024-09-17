@@ -20,10 +20,10 @@ import type { FormEvent, MouseEvent, ReactElement } from 'react';
 import React, { createElement, useEffect, useMemo, useRef, useState } from 'react';
 import { getPlatform } from '@env/platform';
 import type { DateStyle, GraphBranchesVisibility } from '../../../../config';
-import type { SearchQuery } from '../../../../git/search';
-import type { FocusCommandArgs } from '../../../../plus/focus/focus';
+import type { SearchQuery } from '../../../../constants.search';
 import type { Subscription } from '../../../../plus/gk/account/subscription';
 import { isSubscriptionPaid } from '../../../../plus/gk/account/subscription';
+import type { LaunchpadCommandArgs } from '../../../../plus/launchpad/launchpad';
 import type {
 	DidEnsureRowParams,
 	DidGetRowHoverParams,
@@ -85,6 +85,7 @@ import { formatDate, fromNow } from '../../shared/date';
 import { GlGraphHover } from './hover/graphHover.react';
 import type { GraphMinimapDaySelectedEventDetail } from './minimap/minimap';
 import { GlGraphMinimapContainer } from './minimap/minimap-container.react';
+import { GlGraphSideBar } from './sidebar/sidebar.react';
 
 export interface GraphWrapperProps {
 	nonce?: string;
@@ -151,6 +152,7 @@ const createIconElements = (): Record<string, ReactElement> => {
 		'message',
 		'changes',
 		'files',
+		'worktree',
 	];
 
 	const miniIconList = ['upstream-ahead', 'upstream-behind'];
@@ -876,7 +878,7 @@ export function GraphWrapper({
 		});
 	};
 
-	const computeSelectionContext = (active: GraphRow, rows: GraphRow[]) => {
+	const computeSelectionContext = (_active: GraphRow, rows: GraphRow[]) => {
 		if (rows.length <= 1) {
 			setSelectionContexts(undefined);
 			return;
@@ -1132,31 +1134,31 @@ export function GraphWrapper({
 			<header className="titlebar graph-app__header">
 				<div className="titlebar__row titlebar__row--wrap">
 					<div className="titlebar__group">
-						{repo && branchState?.provider?.url && (
+						{repo?.provider?.url && (
 							<>
 								<GlTooltip placement="bottom">
 									<a
-										href={branchState.provider.url}
+										href={repo.provider.url}
 										className="action-button"
 										style={{ marginRight: '-0.5rem' }}
-										aria-label={`Open Repository on ${branchState.provider.name}`}
+										aria-label={`Open Repository on ${repo.provider.name}`}
 									>
 										<span
 											className={
-												branchState.provider.icon === 'cloud'
+												repo.provider.icon === 'cloud'
 													? 'codicon codicon-cloud action-button__icon'
-													: `glicon glicon-provider-${branchState.provider.icon} action-button__icon`
+													: `glicon glicon-provider-${repo.provider.icon} action-button__icon`
 											}
 											aria-hidden="true"
 										></span>
 									</a>
-									<span slot="content">Open Repository on {branchState.provider.name}</span>
+									<span slot="content">Open Repository on {repo.provider.name}</span>
 								</GlTooltip>
-								{repo.isConnected !== true && (
+								{repo?.provider?.connected !== true && (
 									<GlConnect
 										type="action"
 										connected={false}
-										integration={branchState.provider.name}
+										integration={repo.provider.name}
 										connectUrl={createCommandLink('gitlens.plus.cloudIntegrations.connect', {
 											args: {
 												source: 'graph',
@@ -1270,7 +1272,7 @@ export function GraphWrapper({
 								href={`command:gitlens.showLaunchpad?${encodeURIComponent(
 									JSON.stringify({
 										source: 'graph',
-									} satisfies Omit<FocusCommandArgs, 'command'>),
+									} satisfies Omit<LaunchpadCommandArgs, 'command'>),
 								)}`}
 								className="action-button"
 							>
@@ -1587,6 +1589,14 @@ export function GraphWrapper({
 			></GlGraphMinimapContainer>
 			<GlGraphHover ref={hover as any} id="commit-hover" distance={0} skidding={15}></GlGraphHover>
 			<main id="main" className="graph-app__main" aria-hidden={!allowed}>
+				<GlGraphSideBar
+					enabled={graphConfig?.sidebar}
+					include={
+						repo?.isVirtual
+							? ['branches', 'remotes', 'tags']
+							: ['branches', 'remotes', 'tags', 'stashes', 'worktrees']
+					}
+				></GlGraphSideBar>
 				{repo !== undefined ? (
 					<>
 						<GraphContainer

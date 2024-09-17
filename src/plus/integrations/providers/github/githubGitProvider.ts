@@ -12,6 +12,7 @@ import { EventEmitter, FileType, Uri, window, workspace } from 'vscode';
 import { encodeUtf8Hex } from '@env/hex';
 import { isWeb } from '@env/platform';
 import { CharCode, Schemes } from '../../../../constants';
+import type { SearchOperators, SearchQuery } from '../../../../constants.search';
 import type { Container } from '../../../../container';
 import { emojify } from '../../../../emojis';
 import {
@@ -41,7 +42,7 @@ import { GitUri } from '../../../../git/gitUri';
 import type { GitBlame, GitBlameAuthor, GitBlameLine, GitBlameLines } from '../../../../git/models/blame';
 import type { BranchSortOptions } from '../../../../git/models/branch';
 import { getBranchId, getBranchNameWithoutRemote, GitBranch, sortBranches } from '../../../../git/models/branch';
-import type { GitCommitLine } from '../../../../git/models/commit';
+import type { GitCommitLine, GitStashCommit } from '../../../../git/models/commit';
 import { getChangedFilesCount, GitCommit, GitCommitIdentity } from '../../../../git/models/commit';
 import { deletedOrMissing, uncommitted } from '../../../../git/models/constants';
 import { GitContributor } from '../../../../git/models/contributor';
@@ -83,14 +84,9 @@ import { getTagId, GitTag, sortTags } from '../../../../git/models/tag';
 import type { GitTreeEntry } from '../../../../git/models/tree';
 import type { GitUser } from '../../../../git/models/user';
 import { isUserMatch } from '../../../../git/models/user';
+import type { GitWorktree } from '../../../../git/models/worktree';
 import { getRemoteProviderMatcher, loadRemoteProviders } from '../../../../git/remotes/remoteProviders';
-import type {
-	GitSearch,
-	GitSearchResultData,
-	GitSearchResults,
-	SearchOperators,
-	SearchQuery,
-} from '../../../../git/search';
+import type { GitSearch, GitSearchResultData, GitSearchResults } from '../../../../git/search';
 import { getSearchQueryComparisonKey, parseSearchQuery } from '../../../../git/search';
 import { configuration } from '../../../../system/configuration';
 import { setContext } from '../../../../system/context';
@@ -842,7 +838,7 @@ export class GitHubGitProvider implements GitProvider, Disposable {
 			};
 		} catch (ex) {
 			debugger;
-			Logger.error(scope, ex);
+			Logger.error(ex, scope);
 			return undefined;
 		}
 	}
@@ -1334,6 +1330,9 @@ export class GitHubGitProvider implements GitProvider, Disposable {
 			getSettledValue(currentUserResult),
 			avatars,
 			ids,
+			undefined,
+			undefined,
+			undefined,
 			{ ...options, useAvatars: useAvatars },
 		);
 	}
@@ -1351,6 +1350,9 @@ export class GitHubGitProvider implements GitProvider, Disposable {
 		currentUser: GitUser | undefined,
 		avatars: Map<string, string>,
 		ids: Set<string>,
+		stashes: Map<string, GitStashCommit> | undefined,
+		worktrees: GitWorktree[] | undefined,
+		worktreesByBranch: Map<string, GitWorktree> | undefined,
 		options?: {
 			branch?: string;
 			include?: { stats?: boolean };
@@ -1370,7 +1372,9 @@ export class GitHubGitProvider implements GitProvider, Disposable {
 				branches: branchMap,
 				remotes: remoteMap,
 				downstreams: downstreamMap,
-				worktreesByBranch: undefined,
+				stashes: stashes,
+				worktrees: worktrees,
+				worktreesByBranch: worktreesByBranch,
 				rows: [],
 			};
 		}
@@ -1385,7 +1389,9 @@ export class GitHubGitProvider implements GitProvider, Disposable {
 				branches: branchMap,
 				remotes: remoteMap,
 				downstreams: downstreamMap,
-				worktreesByBranch: undefined,
+				stashes: stashes,
+				worktrees: worktrees,
+				worktreesByBranch: worktreesByBranch,
 				rows: [],
 			};
 		}
@@ -1634,7 +1640,9 @@ export class GitHubGitProvider implements GitProvider, Disposable {
 			branches: branchMap,
 			remotes: remoteMap,
 			downstreams: downstreamMap,
-			worktreesByBranch: undefined,
+			stashes: stashes,
+			worktrees: worktrees,
+			worktreesByBranch: worktreesByBranch,
 			rows: rows,
 			id: options?.ref,
 
@@ -1658,6 +1666,9 @@ export class GitHubGitProvider implements GitProvider, Disposable {
 					currentUser,
 					avatars,
 					ids,
+					stashes,
+					worktrees,
+					worktreesByBranch,
 					options,
 				);
 			},
@@ -3353,7 +3364,7 @@ export class GitHubGitProvider implements GitProvider, Disposable {
 				};
 			}
 
-			return searchForCommitsCore.call(this, options?.limit);
+			return await searchForCommitsCore.call(this, options?.limit);
 		} catch (ex) {
 			if (ex instanceof GitSearchError) {
 				throw ex;
@@ -3725,7 +3736,7 @@ async function ensureProviderLoaded<T extends (uri: Uri) => any>(
 					await ensuringProvider;
 					retrying = true;
 					continue;
-				} catch (ex) {
+				} catch (_ex) {
 					debugger;
 				}
 			}

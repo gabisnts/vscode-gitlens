@@ -1,13 +1,13 @@
 import type { ConfigurationChangeEvent, Disposable } from 'vscode';
 import { TreeItem, TreeItemCollapsibleState } from 'vscode';
 import type { SearchAndCompareViewConfig, ViewFilesLayout } from '../config';
-import type { StoredNamedRef, StoredSearchAndCompareItem } from '../constants';
-import { Commands } from '../constants';
+import { Commands } from '../constants.commands';
+import type { SearchQuery } from '../constants.search';
+import type { StoredNamedRef, StoredSearchAndCompareItem } from '../constants.storage';
 import type { Container } from '../container';
 import { unknownGitUri } from '../git/gitUri';
 import type { GitLog } from '../git/models/log';
 import { getRevisionRangeParts, isRevisionRange, shortenRevision } from '../git/models/reference';
-import type { SearchQuery } from '../git/search';
 import { getSearchQuery } from '../git/search';
 import { ReferencesQuickPickIncludes, showReferencePicker } from '../quickpicks/referencePicker';
 import { getRepositoryOrShowPicker } from '../quickpicks/repositoryPicker';
@@ -236,8 +236,6 @@ export class SearchAndCompareViewNode extends ViewNode<'search-compare', SearchA
 		void setContext('gitlens:views:canCompare', true);
 
 		await this.triggerChange();
-
-		await this.view.reveal(this.comparePicker, { focus: false, select: true });
 
 		if (prompt) {
 			await this.compareWithSelected(repoPath, ref2);

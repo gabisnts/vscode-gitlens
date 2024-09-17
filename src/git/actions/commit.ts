@@ -9,7 +9,8 @@ import type { OpenWorkingFileCommandArgs } from '../../commands/openWorkingFile'
 import type { ShowQuickCommitCommandArgs } from '../../commands/showQuickCommit';
 import type { ShowQuickCommitFileCommandArgs } from '../../commands/showQuickCommitFile';
 import type { FileAnnotationType } from '../../config';
-import { Commands, GlyphChars } from '../../constants';
+import { GlyphChars } from '../../constants';
+import { Commands } from '../../constants.commands';
 import { Container } from '../../container';
 import type { ShowInCommitGraphCommandArgs } from '../../plus/webviews/graph/protocol';
 import { showRevisionFilesPicker } from '../../quickpicks/revisionFilesPicker';
@@ -216,8 +217,16 @@ export async function openAllChangesInChangesEditor(
 	const resources: Parameters<typeof openChangesEditor>[0] = [];
 	for (const file of files) {
 		let rhs = file.status === 'D' ? undefined : (await git.getBestRevisionUri(refs.repoPath, file.path, refs.rhs))!;
-		if (rhs != null && refs.rhs === '') {
-			rhs = await git.getWorkingUri(refs.repoPath, rhs);
+		if (refs.rhs === '') {
+			if (rhs != null) {
+				rhs = await git.getWorkingUri(refs.repoPath, rhs);
+			} else {
+				rhs = Uri.from({
+					scheme: 'untitled',
+					authority: '',
+					path: git.getAbsoluteUri(file.path, refs.repoPath).fsPath,
+				});
+			}
 		}
 
 		const lhs =
@@ -225,7 +234,9 @@ export async function openAllChangesInChangesEditor(
 				? undefined
 				: (await git.getBestRevisionUri(refs.repoPath, file.originalPath ?? file.path, refs.lhs))!;
 
-		const uri = (file.status === 'D' ? lhs : rhs) ?? GitUri.fromFile(file, refs.repoPath);
+		const uri = (file.status === 'D' ? lhs : rhs) ?? git.getAbsoluteUri(file.path, refs.repoPath);
+		if (rhs?.scheme === 'untitled' && lhs == null) continue;
+
 		resources.push({ uri: uri, lhs: lhs, rhs: rhs });
 	}
 
@@ -635,7 +646,7 @@ export async function openFileAtRevision(
 				placeholder: 'Choose a file revision to open',
 				keyboard: {
 					keys: ['right', 'alt+right', 'ctrl+right'],
-					onDidPressKey: async (key, uri) => {
+					onDidPressKey: async (_key, uri) => {
 						await findOrOpenEditor(uri, { ...opts, preserveFocus: true, preview: true });
 					},
 				},

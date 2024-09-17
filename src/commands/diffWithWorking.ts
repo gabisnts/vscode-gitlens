@@ -1,6 +1,6 @@
 import type { TextDocumentShowOptions, TextEditor, Uri } from 'vscode';
 import { window } from 'vscode';
-import { Commands } from '../constants';
+import { Commands } from '../constants.commands';
 import type { Container } from '../container';
 import { GitUri } from '../git/gitUri';
 import { deletedOrMissing, uncommittedStaged } from '../git/models/constants';
@@ -107,7 +107,7 @@ export class DiffWithWorkingCommand extends ActiveEditorCommand {
 				placeholder: 'Choose another working file to open',
 				keyboard: {
 					keys: ['right', 'alt+right', 'ctrl+right'],
-					onDidPressKey: async (key, uri) => {
+					onDidPressKey: async (_key, uri) => {
 						await findOrOpenEditor(uri, { ...args.showOptions, preserveFocus: true, preview: true });
 					},
 				},

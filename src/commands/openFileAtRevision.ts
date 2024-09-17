@@ -1,7 +1,8 @@
 import type { TextDocumentShowOptions, TextEditor } from 'vscode';
 import { Uri } from 'vscode';
 import type { FileAnnotationType } from '../config';
-import { Commands, GlyphChars, quickPickTitleMaxChars } from '../constants';
+import { GlyphChars, quickPickTitleMaxChars } from '../constants';
+import { Commands } from '../constants.commands';
 import type { Container } from '../container';
 import { openFileAtRevision } from '../git/actions/commit';
 import { GitUri } from '../git/gitUri';
@@ -191,7 +192,7 @@ export class OpenFileAtRevisionCommand extends ActiveEditorCommand {
 						picked: gitUri.sha,
 						keyboard: {
 							keys: ['right', 'alt+right', 'ctrl+right'],
-							onDidPressKey: async (key, item) => {
+							onDidPressKey: async (_key, item) => {
 								await openFileAtRevision(item.item.file!, item.item, {
 									annotationType: args.annotationType,
 									line: args.line,

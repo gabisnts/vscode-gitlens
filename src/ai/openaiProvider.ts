@@ -1,7 +1,7 @@
 import type { CancellationToken } from 'vscode';
 import { window } from 'vscode';
 import { fetch } from '@env/fetch';
-import type { TelemetryEvents } from '../constants';
+import type { TelemetryEvents } from '../constants.telemetry';
 import type { Container } from '../container';
 import { CancellationError } from '../errors';
 import { configuration } from '../system/configuration';
@@ -403,7 +403,7 @@ Do not make any assumptions or invent details that are not supported by the code
 		}
 
 		try {
-			return fetch(url, {
+			return await fetch(url, {
 				headers: {
 					Accept: 'application/json',
 					'Content-Type': 'application/json',

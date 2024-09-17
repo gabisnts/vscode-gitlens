@@ -1,5 +1,6 @@
 import type { TextDocumentShowOptions, TextEditor, Uri } from 'vscode';
-import { Commands, GlyphChars, quickPickTitleMaxChars } from '../constants';
+import { GlyphChars, quickPickTitleMaxChars } from '../constants';
+import { Commands } from '../constants.commands';
 import type { Container } from '../container';
 import { GitUri } from '../git/gitUri';
 import { shortenRevision } from '../git/models/reference';
@@ -110,7 +111,7 @@ export class DiffWithRevisionCommand extends ActiveEditorCommand {
 				picked: gitUri.sha,
 				keyboard: {
 					keys: ['right', 'alt+right', 'ctrl+right'],
-					onDidPressKey: async (key, item) => {
+					onDidPressKey: async (_key, item) => {
 						await executeCommand<DiffWithCommandArgs>(Commands.DiffWith, {
 							repoPath: gitUri.repoPath,
 							lhs: {

@@ -209,7 +209,7 @@ export class SwitchGitCommand extends QuickCommand<State> {
 					state.reference.repoPath,
 					w => w.branch?.name === state.reference!.name,
 				);
-				if (worktree != null && !worktree.main) {
+				if (worktree != null && !worktree.isDefault) {
 					if (state.fastForwardTo != null) {
 						state.repos[0].merge('--ff-only', state.fastForwardTo.ref);
 					}
@@ -273,7 +273,10 @@ export class SwitchGitCommand extends QuickCommand<State> {
 				}
 			}
 
-			if (this.confirm(context.promptToCreateBranch || context.canSwitchToLocalBranch ? true : state.confirm)) {
+			if (
+				state.skipWorktreeConfirmations ||
+				this.confirm(context.promptToCreateBranch || context.canSwitchToLocalBranch ? true : state.confirm)
+			) {
 				const result = yield* this.confirmStep(state as SwitchStepState, context);
 				if (result === StepResultBreak) continue;
 

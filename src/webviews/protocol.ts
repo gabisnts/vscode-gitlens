@@ -6,7 +6,7 @@ import type {
 	WebviewTypes,
 	WebviewViewIds,
 	WebviewViewTypes,
-} from '../constants';
+} from '../constants.views';
 import type { ConfigPath, ConfigPathValue, Path, PathValue } from '../system/configuration';
 
 export type IpcScope = 'core' | CustomEditorTypes | WebviewTypes | WebviewViewTypes;
@@ -105,7 +105,7 @@ export const DidChangeHostWindowFocusNotification = new IpcNotification<DidChang
 export interface DidChangeWebviewFocusParams {
 	focused: boolean;
 }
-export const DidChangeWebviewFocusNotfication = new IpcCommand<DidChangeWebviewFocusParams>(
+export const DidChangeWebviewFocusNotification = new IpcCommand<DidChangeWebviewFocusParams>(
 	'core',
 	'webview/focus/didChange',
 );
@@ -141,7 +141,7 @@ export function isCustomConfigKey(key: string): key is CustomConfigPath {
 }
 
 export function assertsConfigKeyValue<T extends ConfigPath>(
-	key: T,
+	_key: T,
 	value: unknown,
 ): asserts value is ConfigPathValue<T> {
 	// Noop

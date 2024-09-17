@@ -1,7 +1,7 @@
 import { EntityIdentifierUtils } from '@gitkraken/provider-apis';
 import { Disposable, Uri, window } from 'vscode';
 import type { GHPRPullRequest } from '../../../commands/ghpr/openOrCreateWorktree';
-import { Commands } from '../../../constants';
+import { Commands } from '../../../constants.commands';
 import type { Container } from '../../../container';
 import type { FeatureAccess, RepoFeatureAccess } from '../../../features';
 import { PlusFeatures } from '../../../features';
@@ -33,10 +33,10 @@ import { PageableResult } from '../../../system/paging';
 import { getSettledValue } from '../../../system/promise';
 import type { IpcMessage } from '../../../webviews/protocol';
 import type { WebviewHost, WebviewProvider } from '../../../webviews/webviewProvider';
-import type { EnrichableItem, EnrichedItem } from '../../focus/enrichmentService';
-import { convertRemoteProviderToEnrichProvider } from '../../focus/enrichmentService';
 import type { SubscriptionChangeEvent } from '../../gk/account/subscriptionService';
 import { getEntityIdentifierInput } from '../../integrations/providers/utils';
+import type { EnrichableItem, EnrichedItem } from '../../launchpad/enrichmentService';
+import { convertRemoteProviderToEnrichProvider } from '../../launchpad/enrichmentService';
 import type { ShowInCommitGraphCommandArgs } from '../graph/protocol';
 import type {
 	OpenBranchParams,
@@ -402,7 +402,7 @@ export class FocusWebviewProvider implements WebviewProvider<State> {
 
 		const baseUri = Uri.parse(pullRequest.refs!.base.url);
 		const localUri = searchedPullRequestWithRemote.repoAndRemote.repo.uri;
-		return executeCommand<GHPRPullRequest>(Commands.OpenOrCreateWorktreeForGHPR, {
+		return executeCommand<GHPRPullRequest, void>(Commands.OpenOrCreateWorktreeForGHPR, {
 			base: {
 				repositoryCloneUrl: {
 					repositoryName: pullRequest.refs!.base.repo,
@@ -440,7 +440,7 @@ export class FocusWebviewProvider implements WebviewProvider<State> {
 	@debug()
 	private async getAccess(force?: boolean) {
 		if (force || this._access == null) {
-			this._access = await this.container.git.access(PlusFeatures.Focus);
+			this._access = await this.container.git.access(PlusFeatures.Launchpad);
 		}
 		return this._access;
 	}

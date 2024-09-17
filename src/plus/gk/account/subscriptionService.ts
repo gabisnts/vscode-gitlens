@@ -5,10 +5,8 @@ import type {
 	Event,
 	MessageItem,
 	StatusBarItem,
-	Uri,
 } from 'vscode';
 import {
-	authentication,
 	CancellationTokenSource,
 	version as codeVersion,
 	Disposable,
@@ -18,14 +16,17 @@ import {
 	ProgressLocation,
 	StatusBarAlignment,
 	ThemeColor,
+	Uri,
 	window,
 } from 'vscode';
 import { getPlatform } from '@env/platform';
 import type { OpenWalkthroughCommandArgs } from '../../../commands/walkthroughs';
-import type { CoreColors, Source } from '../../../constants';
-import { Commands, urls } from '../../../constants';
+import { urls } from '../../../constants';
+import type { CoreColors } from '../../../constants.colors';
+import { Commands } from '../../../constants.commands';
+import type { Source, TrackingContext } from '../../../constants.telemetry';
 import type { Container } from '../../../container';
-import { AccountValidationError } from '../../../errors';
+import { AccountValidationError, RequestsAreBlockedTemporarilyError } from '../../../errors';
 import type { RepositoriesChangeEvent } from '../../../git/gitProviderService';
 import { executeCommand, registerCommand } from '../../../system/command';
 import { configuration } from '../../../system/configuration';
@@ -47,8 +48,8 @@ import type { GKCheckInResponse } from '../checkin';
 import { getSubscriptionFromCheckIn } from '../checkin';
 import type { ServerConnection } from '../serverConnection';
 import { ensurePlusFeaturesEnabled } from '../utils';
-import { AuthenticationContext } from './authenticationConnection';
-import { authenticationProviderId, authenticationProviderScopes } from './authenticationProvider';
+import { LoginUriPathPrefix } from './authenticationConnection';
+import { authenticationProviderScopes } from './authenticationProvider';
 import type { Organization } from './organization';
 import { getApplicablePromo } from './promos';
 import type { Subscription } from './subscription';
@@ -108,7 +109,7 @@ export class SubscriptionService implements Disposable {
 					this.updateContext();
 				}
 			}),
-			container.uri.onDidReceiveSubscriptionUpdatedUri(this.onSubscriptionUpdatedUri, this),
+			container.uri.onDidReceiveSubscriptionUpdatedUri(this.checkUpdatedSubscription, this),
 			container.uri.onDidReceiveLoginUri(this.onLoginUri, this),
 		);
 
@@ -290,14 +291,18 @@ export class SubscriptionService implements Disposable {
 			const learn: MessageItem = { title: 'See Pro Features' };
 			const confirm: MessageItem = { title: 'Continue', isCloseAffordance: true };
 			const result = await window.showInformationMessage(
-				`Welcome to your ${
-					effective.name
-				} Trial.\n\nYou must first verify your email. Once verified, you will have full access to Pro features for ${
-					days < 1 ? '<1 more day' : pluralize('day', days, { infix: ' more ' })
-				}.`,
+				isSubscriptionPaid(this._subscription)
+					? `You are now on the ${actual.name} plan. \n\nYou must first verify your email. Once verified, you will have full access to Pro features.`
+					: `Welcome to your ${
+							effective.name
+					  } Trial.\n\nYou must first verify your email. Once verified, you will have full access to Pro features for ${
+							days < 1 ? '<1 more day' : pluralize('day', days, { infix: ' more ' })
+					  }.`,
 				{
 					modal: true,
-					detail: 'Your trial also includes access to our DevEx platform, unleashing powerful Git visualization & productivity capabilities everywhere you work: IDE, desktop, browser, and terminal.',
+					detail: `Your ${
+						isSubscriptionPaid(this._subscription) ? 'plan' : 'trial'
+					} also includes access to our DevEx platform, unleashing powerful Git visualization & productivity capabilities everywhere you work: IDE, desktop, browser, and terminal.`,
 				},
 				verify,
 				learn,
@@ -380,30 +385,7 @@ export class SubscriptionService implements Disposable {
 			);
 		}
 
-		let context: AuthenticationContext | undefined;
-		switch (source?.source) {
-			case 'graph':
-				context = AuthenticationContext.Graph;
-				break;
-			case 'timeline':
-				context = AuthenticationContext.VisualFileHistory;
-				break;
-			case 'git-commands':
-				if (
-					source.detail != null &&
-					typeof source.detail !== 'string' &&
-					(source.detail['action'] === 'worktree' ||
-						source.detail['step.title'] === 'Create Worktree' ||
-						source.detail['step.title'] === 'Open Worktree')
-				) {
-					context = AuthenticationContext.Worktrees;
-				}
-				break;
-			case 'worktrees':
-				context = AuthenticationContext.Worktrees;
-				break;
-		}
-
+		const context = getTrackingContextFromSource(source);
 		return this.loginCore({ signUp: signUp, source: source, context: context });
 	}
 
@@ -425,7 +407,7 @@ export class SubscriptionService implements Disposable {
 		signUp?: boolean;
 		source?: Source;
 		signIn?: { code: string; state?: string };
-		context?: AuthenticationContext;
+		context?: TrackingContext;
 	}): Promise<boolean> {
 		// Abort any waiting authentication to ensure we can start a new flow
 		await this.container.accountAuthentication.abort();
@@ -453,6 +435,7 @@ export class SubscriptionService implements Disposable {
 	}
 
 	private async logoutCore(reset: boolean = false): Promise<void> {
+		this.connection.resetRequestExceptionCount();
 		this._lastValidatedDate = undefined;
 		if (this._validationTimer != null) {
 			clearInterval(this._validationTimer);
@@ -532,24 +515,41 @@ export class SubscriptionService implements Disposable {
 		const session = await this.ensureSession(false);
 		if (session == null) return;
 
-		const rsp = await this.connection.fetchApi('user/reactivate-trial', {
-			method: 'POST',
-			body: JSON.stringify({ client: 'gitlens' }),
-		});
+		try {
+			const rsp = await this.connection.fetchApi('user/reactivate-trial', {
+				method: 'POST',
+				body: JSON.stringify({ client: 'gitlens' }),
+			});
 
-		if (!rsp.ok) {
-			if (rsp.status === 409) {
+			if (!rsp.ok) {
+				if (rsp.status === 409) {
+					void window.showErrorMessage(
+						'You are not eligible to reactivate your Pro trial. If you feel that is an error, please contact support.',
+						'OK',
+					);
+					return;
+				}
+
 				void window.showErrorMessage(
-					'You are not eligible to reactivate your Pro trial. If you feel that is an error, please contact support.',
+					`Unable to reactivate trial: (${rsp.status}) ${rsp.statusText}. Please try again. If this issue persists, please contact support.`,
+					'OK',
+				);
+				return;
+			}
+		} catch (ex) {
+			if (ex instanceof RequestsAreBlockedTemporarilyError) {
+				void window.showErrorMessage(
+					'Unable to reactivate trial: Too many failed requests. Please reload the window and try again.',
 					'OK',
 				);
 				return;
 			}
 
 			void window.showErrorMessage(
-				`Unable to reactivate trial: (${rsp.status}) ${rsp.statusText}. Please try again. If this issue persists, please contact support.`,
+				`Unable to reactivate trial. Please try again. If this issue persists, please contact support.`,
 				'OK',
 			);
+			Logger.error(ex, scope);
 			return;
 		}
 
@@ -761,35 +761,94 @@ export class SubscriptionService implements Disposable {
 			this.container.telemetry.sendEvent('subscription/action', { action: 'upgrade' }, source);
 		}
 
-		if (this._subscription.account == null) {
-			this.showPlans(source);
-		} else {
-			const promoCode = getApplicablePromo(this._subscription.state)?.code;
-			const activeOrgId = this._subscription.activeOrganization?.id;
-			const query = `source=gitlens&product=gitlens${promoCode != null ? `&promoCode=${promoCode}` : ''}${
-				activeOrgId != null ? `&org=${activeOrgId}` : ''
-			}`;
+		if (this._subscription.account != null) {
+			// Do a pre-check-in to see if we've already upgraded to a paid plan.
 			try {
+				const session = await this.ensureSession(false);
+				if (session != null) {
+					if ((await this.checkUpdatedSubscription()) === SubscriptionState.Paid) {
+						return;
+					}
+				}
+			} catch {}
+		}
+
+		const query = new URLSearchParams();
+		query.set('source', 'gitlens');
+		query.set('product', 'gitlens');
+
+		const hasAccount = this._subscription.account != null;
+
+		const successUri = await env.asExternalUri(
+			Uri.parse(
+				`${env.uriScheme}://${this.container.context.extension.id}/${
+					hasAccount ? SubscriptionUpdatedUriPathPrefix : LoginUriPathPrefix
+				}`,
+			),
+		);
+		query.set('success_uri', successUri.toString(true));
+
+		const promoCode = getApplicablePromo(this._subscription.state)?.code;
+		if (promoCode != null) {
+			query.set('promoCode', promoCode);
+		}
+
+		const activeOrgId = this._subscription.activeOrganization?.id;
+		if (activeOrgId != null) {
+			query.set('org', activeOrgId);
+		}
+
+		const context = getTrackingContextFromSource(source);
+		if (context != null) {
+			query.set('context', context);
+		}
+
+		try {
+			if (hasAccount) {
 				const token = await this.container.accountAuthentication.getExchangeToken(
 					SubscriptionUpdatedUriPathPrefix,
 				);
-				const purchasePath = `purchase/checkout?${query}`;
-				void openUrl(this.container.getGkDevExchangeUri(token, purchasePath).toString(true));
-			} catch (ex) {
-				Logger.error(ex, scope);
-				void env.openExternal(this.container.getGkDevUri('purchase/checkout', query));
+				const purchasePath = `purchase/checkout?${query.toString()}`;
+				if (!(await openUrl(this.container.getGkDevExchangeUri(token, purchasePath).toString(true)))) return;
+			} else if (
+				!(await openUrl(this.container.getGkDevUri('purchase/checkout', query.toString()).toString(true)))
+			) {
+				return;
 			}
-
-			take(
-				window.onDidChangeWindowState,
-				2,
-			)(e => {
-				if (e.focused && this._session != null) {
-					void this.checkInAndValidate(this._session, { force: true });
-				}
-			});
+		} catch (ex) {
+			Logger.error(ex, scope);
+			if (!(await openUrl(this.container.getGkDevUri('purchase/checkout', query.toString()).toString(true)))) {
+				return;
+			}
 		}
-		await this.showAccountView();
+
+		const completionPromises = [new Promise<boolean>(resolve => setTimeout(() => resolve(false), 5 * 60 * 1000))];
+
+		if (hasAccount) {
+			completionPromises.push(
+				new Promise<boolean>(resolve =>
+					take(
+						window.onDidChangeWindowState,
+						2,
+					)(e => {
+						if (e.focused) resolve(true);
+					}),
+				),
+				new Promise<boolean>(resolve =>
+					once(this.container.uri.onDidReceiveSubscriptionUpdatedUri)(() => resolve(false)),
+				),
+			);
+		} else {
+			completionPromises.push(
+				new Promise<boolean>(resolve => once(this.container.uri.onDidReceiveLoginUri)(() => resolve(false))),
+			);
+		}
+
+		const refresh = await Promise.race(completionPromises);
+
+		if (refresh) {
+			void this.checkUpdatedSubscription();
+		}
 	}
 
 	@gate<SubscriptionService['validate']>(o => `${o?.force ?? false}`)
@@ -997,7 +1056,7 @@ export class SubscriptionService implements Disposable {
 			force?: boolean;
 			signUp?: boolean;
 			signIn?: { code: string; state?: string };
-			context?: AuthenticationContext;
+			context?: TrackingContext;
 		},
 	): Promise<AuthenticationSession | undefined> {
 		if (this._sessionPromise != null) {
@@ -1033,7 +1092,7 @@ export class SubscriptionService implements Disposable {
 	@debug()
 	private async getOrCreateSession(
 		createIfNeeded: boolean,
-		options?: { signUp?: boolean; signIn?: { code: string; state?: string }; context?: AuthenticationContext },
+		options?: { signUp?: boolean; signIn?: { code: string; state?: string }; context?: TrackingContext },
 	): Promise<AuthenticationSession | null> {
 		const scope = getLogScope();
 
@@ -1042,10 +1101,10 @@ export class SubscriptionService implements Disposable {
 			if (options != null && createIfNeeded) {
 				this.container.accountAuthentication.setOptionsForScopes(authenticationProviderScopes, options);
 			}
-			session = await authentication.getSession(authenticationProviderId, authenticationProviderScopes, {
-				createIfNone: createIfNeeded,
-				silent: !createIfNeeded,
-			});
+			session = await this.container.accountAuthentication.getOrCreateSession(
+				authenticationProviderScopes,
+				createIfNeeded,
+			);
 		} catch (ex) {
 			session = null;
 			if (options != null && createIfNeeded) {
@@ -1137,6 +1196,7 @@ export class SubscriptionService implements Disposable {
 			}
 		}
 
+		this.connection.resetRequestExceptionCount();
 		return session;
 	}
 
@@ -1443,7 +1503,7 @@ export class SubscriptionService implements Disposable {
 
 	onLoginUri(uri: Uri) {
 		const scope = getLogScope();
-		const queryParams: URLSearchParams = new URLSearchParams(uri.query);
+		const queryParams = new URLSearchParams(uri.query);
 		const code = queryParams.get('code');
 		const state = queryParams.get('state');
 		const context = queryParams.get('context');
@@ -1466,13 +1526,15 @@ export class SubscriptionService implements Disposable {
 		void this.loginWithCode({ code: code, state: state ?? undefined }, { source: 'deeplink' });
 	}
 
-	async onSubscriptionUpdatedUri() {
-		if (this._session == null) return;
+	async checkUpdatedSubscription(): Promise<SubscriptionState | undefined> {
+		if (this._session == null) return undefined;
 		const oldSubscriptionState = this._subscription.state;
 		await this.checkInAndValidate(this._session, { force: true });
 		if (oldSubscriptionState !== this._subscription.state) {
 			void this.showPlanMessage({ source: 'subscription' });
 		}
+
+		return this._subscription.state;
 	}
 }
 
@@ -1517,4 +1579,29 @@ function flattenSubscription(
 		'subscription.state': subscription.state,
 		'subscription.stateString': getSubscriptionStateString(subscription.state),
 	};
+}
+
+function getTrackingContextFromSource(source: Source | undefined): TrackingContext | undefined {
+	switch (source?.source) {
+		case 'graph':
+			return 'graph';
+		case 'launchpad':
+			return 'launchpad';
+		case 'timeline':
+			return 'visual_file_history';
+		case 'git-commands':
+			if (source.detail != null && typeof source.detail !== 'string' && 'action' in source.detail) {
+				switch (source.detail.action) {
+					case 'worktree':
+						return 'worktrees';
+					case 'launchpad':
+						return 'launchpad';
+				}
+			}
+			break;
+		case 'worktrees':
+			return 'worktrees';
+	}
+
+	return undefined;
 }

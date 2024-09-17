@@ -1,8 +1,8 @@
 import type { AuthenticationSessionsChangeEvent, CancellationToken, Event } from 'vscode';
 import { authentication, Disposable, env, EventEmitter, ProgressLocation, Uri, window } from 'vscode';
 import { isWeb } from '@env/platform';
-import type { Source } from '../../constants';
-import { sourceToContext } from '../../constants';
+import type { Source } from '../../constants.telemetry';
+import { sourceToContext } from '../../constants.telemetry';
 import type { Container } from '../../container';
 import type { Account } from '../../git/models/author';
 import type { SearchedIssue } from '../../git/models/issue';
@@ -248,11 +248,11 @@ export class IntegrationService implements Disposable {
 				await openUrl(this.container.getGkDevExchangeUri(exchangeToken, `connect?${query}`).toString(true));
 			} catch (ex) {
 				Logger.error(ex, scope);
-				if (!(await env.openExternal(this.container.getGkDevUri('connect', query)))) {
+				if (!(await openUrl(this.container.getGkDevUri('connect', query).toString(true)))) {
 					return false;
 				}
 			}
-		} else if (!(await env.openExternal(this.container.getGkDevUri('connect', query)))) {
+		} else if (!(await openUrl(this.container.getGkDevUri('connect', query).toString(true)))) {
 			return false;
 		}
 

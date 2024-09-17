@@ -1,4 +1,5 @@
 import { MarkdownString, ThemeIcon, TreeItem, TreeItemCollapsibleState, window } from 'vscode';
+import type { IconPath } from '../../@types/vscode.iconpath';
 import { GlyphChars } from '../../constants';
 import type { GitUri } from '../../git/gitUri';
 import type { GitBranch } from '../../git/models/branch';
@@ -8,6 +9,7 @@ import { shortenRevision } from '../../git/models/reference';
 import { getHighlanderProviderName } from '../../git/models/remote';
 import type { GitStatus } from '../../git/models/status';
 import type { GitWorktree } from '../../git/models/worktree';
+import { getBranchIconPath } from '../../git/utils/branch-utils';
 import { getContext } from '../../system/context';
 import { gate } from '../../system/decorators/gate';
 import { debug } from '../../system/decorators/log';
@@ -191,17 +193,17 @@ export class WorktreeNode extends CacheableChildrenViewNode<'worktree', ViewsWit
 		this.splatted = false;
 
 		let description = '';
-		let icon: ThemeIcon | undefined;
+		let icon: IconPath | undefined;
 		let hasChanges = false;
 
 		const tooltip = new MarkdownString('', true);
 		tooltip.isTrusted = true;
 
 		const indicators =
-			this.worktree.main || this.worktree.opened
+			this.worktree.isDefault || this.worktree.opened
 				? ` \u00a0(${
-						this.worktree.main
-							? `_main${this.worktree.opened ? ', active_' : '_'}`
+						this.worktree.isDefault
+							? `_default${this.worktree.opened ? ', active_' : '_'}`
 							: this.worktree.opened
 							  ? '_active_'
 							  : ''
@@ -217,7 +219,9 @@ export class WorktreeNode extends CacheableChildrenViewNode<'worktree', ViewsWit
 		switch (this.worktree.type) {
 			case 'bare':
 				icon = new ThemeIcon('folder');
-				tooltip.appendMarkdown(`${this.worktree.main ? '$(pass) ' : ''}Bare Worktree${indicators}${folder}`);
+				tooltip.appendMarkdown(
+					`${this.worktree.isDefault ? '$(pass) ' : ''}Bare Worktree${indicators}${folder}`,
+				);
 				break;
 
 			case 'branch': {
@@ -225,11 +229,11 @@ export class WorktreeNode extends CacheableChildrenViewNode<'worktree', ViewsWit
 				this._branch = branch;
 
 				tooltip.appendMarkdown(
-					`${this.worktree.main ? '$(pass) ' : ''}Worktree for $(git-branch) \`${
+					`${this.worktree.isDefault ? '$(pass) ' : ''}Worktree for $(git-branch) \`${
 						branch?.getNameWithoutRemote() ?? branch?.name
 					}\`${indicators}${folder}`,
 				);
-				icon = new ThemeIcon('git-branch');
+				icon = getBranchIconPath(this.view.container, branch);
 
 				if (branch != null) {
 					if (!branch.remote) {
@@ -313,7 +317,7 @@ export class WorktreeNode extends CacheableChildrenViewNode<'worktree', ViewsWit
 			case 'detached': {
 				icon = new ThemeIcon('git-commit');
 				tooltip.appendMarkdown(
-					`${this.worktree.main ? '$(pass) ' : ''}Detached Worktree at $(git-commit) ${shortenRevision(
+					`${this.worktree.isDefault ? '$(pass) ' : ''}Detached Worktree at $(git-commit) ${shortenRevision(
 						this.worktree.sha,
 					)}${indicators}${folder}`,
 				);
@@ -346,7 +350,7 @@ export class WorktreeNode extends CacheableChildrenViewNode<'worktree', ViewsWit
 		const item = new TreeItem(this.worktree.name, TreeItemCollapsibleState.Collapsed);
 		item.id = this.id;
 		item.description = description;
-		item.contextValue = `${ContextValues.Worktree}${this.worktree.main ? '+main' : ''}${
+		item.contextValue = `${ContextValues.Worktree}${this.worktree.isDefault ? '+default' : ''}${
 			this.worktree.opened ? '+active' : ''
 		}`;
 		item.iconPath =

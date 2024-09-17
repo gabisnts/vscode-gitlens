@@ -3,9 +3,13 @@ import type { Container } from '../../container';
 import type { GitBranchReference, GitReference } from '../../git/models/reference';
 import { getNameWithoutRemote, getReferenceLabel, isRevisionReference } from '../../git/models/reference';
 import { Repository } from '../../git/models/repository';
+import type { GitWorktree } from '../../git/models/worktree';
+import { getWorktreesByBranch } from '../../git/models/worktree';
 import type { QuickPickItemOfT } from '../../quickpicks/items/common';
+import { createQuickPickSeparator } from '../../quickpicks/items/common';
 import type { FlagsQuickPickItem } from '../../quickpicks/items/flags';
 import { createFlagsQuickPickItem } from '../../quickpicks/items/flags';
+import { ensureArray } from '../../system/array';
 import { pluralize } from '../../system/string';
 import type { ViewsWithRepositoryFolders } from '../../views/viewBase';
 import { getSteps } from '../gitCommands.utils';
@@ -421,7 +425,10 @@ export class BranchGitCommand extends QuickCommand {
 		return canPickStepContinue(step, state, selection) ? selection[0].item : StepResultBreak;
 	}
 
-	private *deleteCommandSteps(state: DeleteStepState | PruneStepState, context: Context): StepResultGenerator<void> {
+	private async *deleteCommandSteps(
+		state: DeleteStepState | PruneStepState,
+		context: Context,
+	): AsyncStepResultGenerator<void> {
 		const prune = state.subcommand === 'prune';
 		if (state.flags == null) {
 			state.flags = [];
@@ -432,6 +439,8 @@ export class BranchGitCommand extends QuickCommand {
 				state.references = [state.references];
 			}
 
+			const worktreesByBranch = await getWorktreesByBranch(state.repo, { includeDefault: true });
+
 			if (
 				state.counter < 3 ||
 				state.references == null ||
@@ -440,7 +449,9 @@ export class BranchGitCommand extends QuickCommand {
 				context.title = getTitle('Branches', state.subcommand);
 
 				const result = yield* pickBranchesStep(state, context, {
-					filter: prune ? b => !b.current && Boolean(b.upstream?.missing) : b => !b.current,
+					filter: prune
+						? b => !b.current && Boolean(b.upstream?.missing) && !worktreesByBranch.get(b.id)?.isDefault
+						: b => !b.current && !worktreesByBranch.get(b.id)?.isDefault,
 					picked: state.references?.map(r => r.ref),
 					placeholder: prune
 						? 'Choose branches with missing upstreams to delete'
@@ -462,6 +473,34 @@ export class BranchGitCommand extends QuickCommand {
 			);
 
 			assertStateStepDeleteBranches(state);
+
+			const worktrees = this.getSelectedWorktrees(state, worktreesByBranch);
+			if (worktrees.length) {
+				const result = yield* getSteps(
+					this.container,
+					{
+						command: 'worktree',
+						state: {
+							subcommand: 'delete',
+							repo: state.repo,
+							uris: worktrees.map(wt => wt.uri),
+							startingFromBranchDelete: true,
+							overrides: {
+								title: `Delete ${worktrees.length === 1 ? 'Worktree' : 'Worktrees'} for ${
+									worktrees.length === 1 ? 'Branch' : 'Branches'
+								}`,
+							},
+						},
+					},
+					this.pickedVia,
+				);
+				if (result !== StepResultBreak) {
+					// we get here if it was a step back from the delete worktrees picker
+					state.counter--;
+					continue;
+				}
+			}
+
 			const result = yield* this.deleteCommandConfirmStep(state, context);
 			if (result === StepResultBreak) continue;
 
@@ -473,6 +512,22 @@ export class BranchGitCommand extends QuickCommand {
 				remote: state.flags.includes('--remotes'),
 			});
 		}
+	}
+
+	private getSelectedWorktrees(
+		state: DeleteStepState | PruneStepState,
+		worktreesByBranch: Map<string, GitWorktree>,
+	): GitWorktree[] {
+		const worktrees: GitWorktree[] = [];
+
+		for (const ref of ensureArray(state.references)) {
+			const worktree = worktreesByBranch.get(ref.id!);
+			if (worktree != null && !worktree.isDefault) {
+				worktrees.push(worktree);
+			}
+		}
+
+		return worktrees;
 	}
 
 	private *deleteCommandConfirmStep(
@@ -498,17 +553,14 @@ export class BranchGitCommand extends QuickCommand {
 
 			if (state.subcommand !== 'prune' && state.references.some(b => b.upstream != null)) {
 				confirmations.push(
+					createQuickPickSeparator(),
 					createFlagsQuickPickItem<DeleteFlags>(state.flags, ['--remotes'], {
-						label: `${context.title} & Remote${
-							state.references.filter(b => !b.remote).length > 1 ? 's' : ''
-						}`,
+						label: 'Delete Local & Remote Branches',
 						description: '--remotes',
 						detail: `Will delete ${getReferenceLabel(state.references)} and any remote tracking branches`,
 					}),
 					createFlagsQuickPickItem<DeleteFlags>(state.flags, ['--force', '--remotes'], {
-						label: `Force ${context.title} & Remote${
-							state.references.filter(b => !b.remote).length > 1 ? 's' : ''
-						}`,
+						label: 'Force Delete Local & Remote Branches',
 						description: '--force --remotes',
 						detail: `Will forcibly delete ${getReferenceLabel(
 							state.references,

@@ -1,5 +1,5 @@
 import type { VSCodeAIModels } from './ai/vscodeProvider';
-import type { SupportedAIModels } from './constants';
+import type { SupportedAIModels } from './constants.ai';
 import type { ResourceDescriptor } from './plus/integrations/integration';
 import type { DateTimeFormat } from './system/date';
 import type { LogLevel } from './system/logger.constants';
@@ -98,7 +98,6 @@ export interface Config {
 		readonly staleThreshold: number | null;
 		readonly indicator: {
 			readonly enabled: boolean;
-			readonly openInEditor: boolean;
 			readonly icon: 'default' | 'group';
 			readonly label: false | 'item' | 'counts';
 			readonly useColors: boolean;
@@ -414,6 +413,9 @@ export interface GraphConfig {
 	readonly showGhostRefsOnRowHover: boolean;
 	readonly showRemoteNames: boolean;
 	readonly showUpstreamStatus: boolean;
+	readonly sidebar: {
+		readonly enabled: boolean;
+	};
 	readonly statusBar: {
 		readonly enabled: boolean;
 	};
@@ -587,6 +589,9 @@ export type SuppressedMessages =
 	| 'suppressLineUncommittedWarning'
 	| 'suppressNoRepositoryWarning'
 	| 'suppressRebaseSwitchToTextWarning'
+	| 'suppressGkDisconnectedTooManyFailedRequestsWarningMessage'
+	| 'suppressGkRequestFailed500Warning'
+	| 'suppressGkRequestTimedOutWarning'
 	| 'suppressIntegrationDisconnectedTooManyFailedRequestsWarning'
 	| 'suppressIntegrationRequestFailed500Warning'
 	| 'suppressIntegrationRequestTimedOutWarning'
@@ -615,13 +620,16 @@ export interface ViewsCommonConfig {
 	};
 	readonly openChangesInMultiDiffEditor: boolean;
 	readonly pageItemLimit: number;
+	readonly showCurrentBranchOnTop: boolean;
 	readonly showRelativeDateMarkers: boolean;
 }
 
 export const viewsCommonConfigKeys: (keyof ViewsCommonConfig)[] = [
+	'collapseWorktreesWhenPossible',
 	'defaultItemLimit',
 	'formats',
 	'pageItemLimit',
+	'showCurrentBranchOnTop',
 	'showRelativeDateMarkers',
 ];
 

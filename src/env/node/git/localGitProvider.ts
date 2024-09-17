@@ -12,6 +12,7 @@ import type { GitExtension, API as ScmGitApi } from '../../../@types/vscode.git'
 import { getCachedAvatarUri } from '../../../avatars';
 import type { GitConfigKeys } from '../../../constants';
 import { GlyphChars, Schemes } from '../../../constants';
+import type { SearchQuery } from '../../../constants.search';
 import type { Container } from '../../../container';
 import { emojify } from '../../../emojis';
 import { CancellationError } from '../../../errors';
@@ -127,7 +128,7 @@ import type { GitTreeEntry } from '../../../git/models/tree';
 import type { GitUser } from '../../../git/models/user';
 import { isUserMatch } from '../../../git/models/user';
 import type { GitWorktree } from '../../../git/models/worktree';
-import { getWorktreesByBranch } from '../../../git/models/worktree';
+import { getWorktreeId, groupWorktreesByBranch } from '../../../git/models/worktree';
 import { parseGitBlame } from '../../../git/parsers/blameParser';
 import { parseGitBranches } from '../../../git/parsers/branchParser';
 import {
@@ -159,7 +160,7 @@ import { parseGitTags } from '../../../git/parsers/tagParser';
 import { parseGitLsFiles, parseGitTree } from '../../../git/parsers/treeParser';
 import { parseGitWorktrees } from '../../../git/parsers/worktreeParser';
 import { getRemoteProviderMatcher, loadRemoteProviders } from '../../../git/remotes/remoteProviders';
-import type { GitSearch, GitSearchResultData, GitSearchResults, SearchQuery } from '../../../git/search';
+import type { GitSearch, GitSearchResultData, GitSearchResults } from '../../../git/search';
 import { getGitArgsFromSearchQuery, getSearchQueryComparisonKey } from '../../../git/search';
 import {
 	showBlameInvalidIgnoreRevsFileWarningMessage,
@@ -182,7 +183,7 @@ import { configuration } from '../../../system/configuration';
 import { gate } from '../../../system/decorators/gate';
 import { debug, log } from '../../../system/decorators/log';
 import { debounce } from '../../../system/function';
-import { filterMap as filterMapIterable, find, first, join, last, map, some } from '../../../system/iterable';
+import { filterMap as filterMapIterable, find, first, join, last, map, skip, some } from '../../../system/iterable';
 import { Logger } from '../../../system/logger';
 import type { LogScope } from '../../../system/logger.scope';
 import { getLogScope, setLogScopeExit } from '../../../system/logger.scope';
@@ -320,6 +321,7 @@ export class LocalGitProvider implements GitProvider, Disposable {
 		if (e.changed(RepositoryChange.Heads, RepositoryChange.Remotes, RepositoryChangeComparisonMode.Any)) {
 			this._branchesCache.delete(repo.path);
 			this._contributorsCache.delete(repo.path);
+			this._worktreesCache.delete(repo.path);
 		}
 
 		if (e.changed(RepositoryChange.Remotes, RepositoryChange.RemoteProviders, RepositoryChangeComparisonMode.Any)) {
@@ -1255,7 +1257,7 @@ export class LocalGitProvider implements GitProvider, Disposable {
 		const scope = getLogScope();
 
 		try {
-			return this.git.clone(url, parentPath);
+			return await this.git.clone(url, parentPath);
 		} catch (ex) {
 			Logger.error(ex, scope);
 			void showGenericErrorMessage(`Unable to clone '${url}'`);
@@ -1342,7 +1344,7 @@ export class LocalGitProvider implements GitProvider, Disposable {
 				)
 			)?.trim();
 
-			return this.getCommit(repoPath, sha);
+			return await this.getCommit(repoPath, sha);
 		} catch (ex) {
 			Logger.error(ex, scope);
 			debugger;
@@ -1352,7 +1354,7 @@ export class LocalGitProvider implements GitProvider, Disposable {
 			// Delete the temporary index file
 			try {
 				await fs.rm(tempDir, { recursive: true });
-			} catch (ex) {
+			} catch (_ex) {
 				debugger;
 			}
 		}
@@ -2188,7 +2190,7 @@ export class LocalGitProvider implements GitProvider, Disposable {
 					}
 
 					return { values: parseGitBranches(this.container, data, repoPath!) };
-				} catch (ex) {
+				} catch (_ex) {
 					this._branchesCache.delete(repoPath!);
 
 					return emptyPagedResult;
@@ -2318,21 +2320,33 @@ export class LocalGitProvider implements GitProvider, Disposable {
 		const refParser = getRefParser();
 		const statsParser = getGraphStatsParser();
 
-		const [refResult, stashResult, branchesResult, remotesResult, currentUserResult, worktreesByBranchResult] =
+		const [refResult, stashResult, branchesResult, remotesResult, currentUserResult, worktreesResult] =
 			await Promise.allSettled([
 				this.git.log(repoPath, undefined, ...refParser.arguments, '-n1', options?.ref ?? 'HEAD'),
 				this.getStash(repoPath),
 				this.getBranches(repoPath),
 				this.getRemotes(repoPath),
 				this.getCurrentUser(repoPath),
-				getWorktreesByBranch(this.container.git.getRepository(repoPath)),
+				this.container.git
+					.getWorktrees(repoPath)
+					.then(w => [w, groupWorktreesByBranch(w, { includeDefault: true })]) satisfies Promise<
+					[GitWorktree[], Map<string, GitWorktree>]
+				>,
 			]);
 
 		const branches = getSettledValue(branchesResult)?.values;
 		const branchMap = branches != null ? new Map(branches.map(r => [r.name, r])) : new Map<string, GitBranch>();
 		const headBranch = branches?.find(b => b.current);
 		const headRefUpstreamName = headBranch?.upstream?.name;
-		const worktreesByBranch = getSettledValue(worktreesByBranchResult);
+		const [worktrees, worktreesByBranch] = getSettledValue(worktreesResult) ?? [[], new Map<string, GitWorktree>()];
+
+		let branchIdOfMainWorktree: string | undefined;
+		if (worktreesByBranch != null) {
+			branchIdOfMainWorktree = find(worktreesByBranch, ([, wt]) => wt.isDefault)?.[0];
+			if (branchIdOfMainWorktree != null) {
+				worktreesByBranch.delete(branchIdOfMainWorktree);
+			}
+		}
 
 		const currentUser = getSettledValue(currentUserResult);
 
@@ -2342,12 +2356,15 @@ export class LocalGitProvider implements GitProvider, Disposable {
 
 		const downstreamMap = new Map<string, string[]>();
 
+		let stashes: Map<string, GitStashCommit> | undefined;
 		let stdin: string | undefined;
+
 		// TODO@eamodio this is insanity -- there *HAS* to be a better way to get git log to return stashes
 		const stash = getSettledValue(stashResult);
-		if (stash != null && stash.commits.size !== 0) {
+		if (stash?.commits.size) {
+			stashes = new Map(stash.commits);
 			stdin = join(
-				map(stash.commits.values(), c => c.sha.substring(0, 9)),
+				map(stashes.values(), c => c.sha.substring(0, 9)),
 				'\n',
 			);
 		}
@@ -2411,6 +2428,8 @@ export class LocalGitProvider implements GitProvider, Disposable {
 									branches: branchMap,
 									remotes: remoteMap,
 									downstreams: downstreamMap,
+									stashes: stashes,
+									worktrees: worktrees,
 									worktreesByBranch: worktreesByBranch,
 									rows: [],
 								};
@@ -2434,6 +2453,8 @@ export class LocalGitProvider implements GitProvider, Disposable {
 						branches: branchMap,
 						remotes: remoteMap,
 						downstreams: downstreamMap,
+						stashes: stashes,
+						worktrees: worktrees,
 						worktreesByBranch: worktreesByBranch,
 						rows: [],
 					};
@@ -2605,7 +2626,13 @@ export class LocalGitProvider implements GitProvider, Disposable {
 						context = {
 							webviewItem: `gitlens:branch${head ? '+current' : ''}${
 								branch?.upstream != null ? '+tracking' : ''
-							}${worktreesByBranch?.has(branchId) ? '+worktree' : ''}`,
+							}${
+								worktreesByBranch?.has(branchId)
+									? '+worktree'
+									: branchIdOfMainWorktree === branchId
+									  ? '+checkedout'
+									  : ''
+							}`,
 							webviewItemValue: {
 								type: 'branch',
 								ref: createReference(tip, repoPath, {
@@ -2618,6 +2645,7 @@ export class LocalGitProvider implements GitProvider, Disposable {
 							},
 						};
 
+						const worktree = worktreesByBranch?.get(branchId);
 						refHead = {
 							id: branchId,
 							name: tip,
@@ -2630,6 +2658,7 @@ export class LocalGitProvider implements GitProvider, Disposable {
 											id: getBranchId(repoPath, true, branch.upstream.name),
 									  }
 									: undefined,
+							worktreeId: worktree != null ? getWorktreeId(repoPath, worktree.name) : undefined,
 						};
 						refHeads.push(refHead);
 						if (branch?.upstream?.name != null) {
@@ -2820,6 +2849,8 @@ export class LocalGitProvider implements GitProvider, Disposable {
 				branches: branchMap,
 				remotes: remoteMap,
 				downstreams: downstreamMap,
+				stashes: stashes,
+				worktrees: worktrees,
 				worktreesByBranch: worktreesByBranch,
 				rows: rows,
 				id: sha,
@@ -2929,7 +2960,7 @@ export class LocalGitProvider implements GitProvider, Disposable {
 					}
 
 					return [...contributors.values()];
-				} catch (ex) {
+				} catch (_ex) {
 					contributorsCache?.delete(key);
 
 					return [];
@@ -2979,7 +3010,7 @@ export class LocalGitProvider implements GitProvider, Disposable {
 
 					[, key, value] = match;
 					// Stops excessive memory usage -- https://bugs.chromium.org/p/v8/issues/detail?id=2869
-					user[key as 'name' | 'email'] = ` ${value}`.substr(1);
+					user[key as 'name' | 'email'] = ` ${value}`.substring(1);
 				} while (true);
 			} else {
 				user.name =
@@ -3120,7 +3151,7 @@ export class LocalGitProvider implements GitProvider, Disposable {
 				if (match == null) return undefined;
 
 				const [, branch] = match;
-				return `${remote}/${branch.substr('refs/heads/'.length)}`;
+				return `${remote}/${branch.substring('refs/heads/'.length)}`;
 			} catch {}
 		}
 
@@ -3399,7 +3430,7 @@ export class LocalGitProvider implements GitProvider, Disposable {
 				hunk: hunk,
 				line: hunkLine,
 			};
-		} catch (ex) {
+		} catch (_ex) {
 			return undefined;
 		}
 	}
@@ -3420,7 +3451,7 @@ export class LocalGitProvider implements GitProvider, Disposable {
 
 			const files = parseGitDiffNameStatusFiles(data, repoPath);
 			return files == null || files.length === 0 ? undefined : files;
-		} catch (ex) {
+		} catch (_ex) {
 			return undefined;
 		}
 	}
@@ -3617,6 +3648,7 @@ export class LocalGitProvider implements GitProvider, Disposable {
 				await this.getCurrentUser(repoPath),
 				limit,
 				false,
+				undefined,
 				undefined,
 				undefined,
 				hasMoreOverride,
@@ -4249,7 +4281,7 @@ export class LocalGitProvider implements GitProvider, Disposable {
 				}
 
 				if (branch.startsWith('refs/heads/')) {
-					branch = branch.substr(11).trim();
+					branch = branch.substring(11).trim();
 				}
 
 				const [branchTipsResult, tagTipsResult] = await Promise.allSettled([
@@ -4815,7 +4847,9 @@ export class LocalGitProvider implements GitProvider, Disposable {
 	getRevisionContent(repoPath: string, path: string, ref: string): Promise<Uint8Array | undefined> {
 		const [relativePath, root] = splitPath(path, repoPath);
 
-		return this.git.show<Buffer>(root, relativePath, ref, { encoding: 'buffer' });
+		return this.git.show<Buffer>(root, relativePath, ref, { encoding: 'buffer' }) as Promise<
+			Uint8Array | undefined
+		>;
 	}
 
 	@gate()
@@ -4972,7 +5006,7 @@ export class LocalGitProvider implements GitProvider, Disposable {
 				try {
 					const data = await this.git.tag(repoPath!);
 					return { values: parseGitTags(data, repoPath!) };
-				} catch (ex) {
+				} catch (_ex) {
 					this._tagsCache.delete(repoPath!);
 
 					return emptyPagedResult;
@@ -5378,24 +5412,25 @@ export class LocalGitProvider implements GitProvider, Disposable {
 				args.push(...files);
 			}
 
+			const includeOnlyStashes = args.includes('--no-walk');
+
 			let stashes: Map<string, GitStashCommit> | undefined;
 			let stdin: string | undefined;
+
 			if (shas == null) {
-				const stash = await this.getStash(repoPath);
 				// TODO@eamodio this is insanity -- there *HAS* to be a better way to get git log to return stashes
+				const stash = await this.getStash(repoPath);
 				if (stash?.commits.size) {
-					stashes = new Map();
+					stdin = '';
+					stashes = new Map(stash.commits);
 					for (const commit of stash.commits.values()) {
-						stashes.set(commit.sha, commit);
-						for (const p of commit.parents) {
+						stdin += `${commit.sha.substring(0, 9)}\n`;
+						// Include the stash's 2nd (index files) and 3rd (untracked files) parents
+						for (const p of skip(commit.parents, 1)) {
 							stashes.set(p, commit);
+							stdin += `${p.substring(0, 9)}\n`;
 						}
 					}
-
-					stdin = join(
-						map(stash.commits.values(), c => c.sha.substring(0, 9)),
-						'\n',
-					);
 				}
 			}
 
@@ -5418,6 +5453,7 @@ export class LocalGitProvider implements GitProvider, Disposable {
 				false,
 				undefined,
 				stashes,
+				includeOnlyStashes,
 			);
 
 			if (log != null) {
@@ -5465,7 +5501,7 @@ export class LocalGitProvider implements GitProvider, Disposable {
 			}
 
 			return log;
-		} catch (ex) {
+		} catch (_ex) {
 			return undefined;
 		}
 	}
@@ -5521,15 +5557,24 @@ export class LocalGitProvider implements GitProvider, Disposable {
 
 			const limit = options?.limit ?? configuration.get('advanced.maxSearchItems') ?? 0;
 			const similarityThreshold = configuration.get('advanced.similarityThreshold');
+			const includeOnlyStashes = searchArgs.includes('--no-walk');
 
-			const stash = await this.getStash(repoPath);
+			let stashes: Map<string, GitStashCommit> | undefined;
 			let stdin: string | undefined;
+
 			// TODO@eamodio this is insanity -- there *HAS* to be a better way to get git log to return stashes
+			const stash = await this.getStash(repoPath);
 			if (stash?.commits.size) {
-				stdin = join(
-					map(stash.commits.values(), c => c.sha.substring(0, 9)),
-					'\n',
-				);
+				stdin = '';
+				stashes = new Map(stash.commits);
+				for (const commit of stash.commits.values()) {
+					stdin += `${commit.sha.substring(0, 9)}\n`;
+					// Include the stash's 2nd (index files) and 3rd (untracked files) parents
+					for (const p of skip(commit.parents, 1)) {
+						stashes.set(p, commit);
+						stdin += `${p.substring(0, 9)}\n`;
+					}
+				}
 			}
 
 			const args = [
@@ -5583,6 +5628,8 @@ export class LocalGitProvider implements GitProvider, Disposable {
 				let count = total;
 
 				for (const r of refAndDateParser.parse(data)) {
+					if (includeOnlyStashes && !stashes?.has(r.sha)) continue;
+
 					if (results.has(r.sha)) {
 						limit--;
 						continue;
@@ -5619,7 +5666,7 @@ export class LocalGitProvider implements GitProvider, Disposable {
 				};
 			}
 
-			return searchForCommitsCore.call(this, limit);
+			return await searchForCommitsCore.call(this, limit);
 		} catch (ex) {
 			if (ex instanceof GitSearchError) {
 				throw ex;

@@ -2,7 +2,7 @@
 	"name": "gitlens",
 	"displayName": "GitLens — Git supercharged",
 	"description": "Supercharge Git within VS Code — Visualize code authorship at a glance via Git blame annotations and CodeLens, seamlessly navigate and explore Git repositories, gain valuable insights via rich visualizations and powerful comparison commands, and so much more",
-	"version": "15.3.0",
+	"version": "15.5.0",
 	"engines": {
 		"vscode": "^1.82.0"
 	},
@@ -50,7 +50,6 @@
 	"activationEvents": [
 		"onAuthenticationRequest:gitlens-gitkraken",
 		"onFileSystem:gitlens",
-		"onWebviewPanel:gitlens.focus",
 		"onWebviewPanel:gitlens.graph",
 		"onWebviewPanel:gitlens.patchDetails",
 		"onWebviewPanel:gitlens.settings",
@@ -929,225 +928,9 @@
 			},
 			{
 				"id": "graph",
-				"title": "Commit Graph",
+				"title": "Commit Graph (ᴘʀᴏ)",
 				"order": 50,
 				"properties": {
-					"gitlens.graph.branchesVisibility": {
-						"type": "string",
-						"enum": [
-							"all",
-							"smart",
-							"current"
-						],
-						"enumDescriptions": [
-							"Shows all branches",
-							"Shows only relevant branches",
-							"Shows only the current branch"
-						],
-						"default": "all",
-						"markdownDescription": "Specifies the visibility of branches on the _Commit Graph_",
-						"scope": "window",
-						"order": 2
-					},
-					"gitlens.graph.allowMultiple": {
-						"type": "boolean",
-						"default": true,
-						"markdownDescription": "Specifies whether to allow opening multiple instances of the _Commit Graph_ in the editor area",
-						"scope": "window",
-						"order": 5
-					},
-					"gitlens.graph.defaultItemLimit": {
-						"type": "number",
-						"default": 500,
-						"markdownDescription": "Specifies the default number of items to show in the _Commit Graph_. Use 0 to specify no limit",
-						"scope": "window",
-						"order": 10
-					},
-					"gitlens.graph.pageItemLimit": {
-						"type": "number",
-						"default": 200,
-						"markdownDescription": "Specifies the number of additional items to fetch when paginating in the _Commit Graph_. Use 0 to specify no limit",
-						"scope": "window",
-						"order": 11
-					},
-					"gitlens.graph.searchItemLimit": {
-						"type": "number",
-						"default": 100,
-						"markdownDescription": "Specifies the number of results to gather when searching in the _Commit Graph_. Use 0 to specify no limit",
-						"scope": "window",
-						"order": 12
-					},
-					"gitlens.graph.scrollMarkers.enabled": {
-						"type": "boolean",
-						"default": true,
-						"markdownDescription": "Specifies whether to show markers on the scrollbar in the _Commit Graph_",
-						"scope": "window",
-						"order": 13
-					},
-					"gitlens.graph.scrollMarkers.additionalTypes": {
-						"type": "array",
-						"default": [
-							"localBranches",
-							"stashes"
-						],
-						"items": {
-							"type": "string",
-							"enum": [
-								"localBranches",
-								"remoteBranches",
-								"pullRequests",
-								"stashes",
-								"tags"
-							],
-							"enumDescriptions": [
-								"Marks the location of local branches",
-								"Marks the location of remote branches",
-								"Marks the location of pull requests",
-								"Marks the location of stashes",
-								"Marks the location of tags"
-							]
-						},
-						"minItems": 0,
-						"maxItems": 5,
-						"uniqueItems": true,
-						"markdownDescription": "Specifies additional markers to show on the scrollbar in the _Commit Graph_",
-						"scope": "window",
-						"order": 14
-					},
-					"gitlens.graph.scrollRowPadding": {
-						"type": "number",
-						"default": 0,
-						"markdownDescription": "Specifies the number of rows from the edge at which the graph will scroll when using keyboard or search to change the selected row",
-						"scope": "window",
-						"order": 14
-					},
-					"gitlens.graph.showDetailsView": {
-						"type": [
-							"boolean",
-							"string"
-						],
-						"default": "selection",
-						"enum": [
-							false,
-							"open",
-							"selection"
-						],
-						"enumDescriptions": [
-							"Never shows the _Commit Details_ view automatically",
-							"Shows the _Commit Details_ view automatically only when opening the _Commit Graph_",
-							"Shows the _Commit Details_ view automatically when selection changes in the _Commit Graph_"
-						],
-						"markdownDescription": "Specifies when to show the _Commit Details_ view for the selected row in the _Commit Graph_",
-						"scope": "window",
-						"order": 20
-					},
-					"gitlens.graph.showGhostRefsOnRowHover": {
-						"type": "boolean",
-						"default": true,
-						"markdownDescription": "Specifies whether to show a ghost branch / tag when hovering over or selecting a row in the _Commit Graph_",
-						"scope": "window",
-						"order": 21
-					},
-					"gitlens.graph.highlightRowsOnRefHover": {
-						"type": "boolean",
-						"default": true,
-						"markdownDescription": "Specifies whether to highlight rows associated with the branch / tag when hovering over it in the _Commit Graph_",
-						"scope": "window",
-						"order": 22
-					},
-					"gitlens.graph.dimMergeCommits": {
-						"type": "boolean",
-						"default": false,
-						"markdownDescription": "Specifies whether to dim (deemphasize) merge commit rows in the _Commit Graph_",
-						"scope": "window",
-						"order": 23
-					},
-					"gitlens.graph.showRemoteNames": {
-						"type": "boolean",
-						"default": false,
-						"markdownDescription": "Specifies whether to show remote names on remote branches in the _Commit Graph_",
-						"scope": "window",
-						"order": 24
-					},
-					"gitlens.graph.avatars": {
-						"type": "boolean",
-						"default": true,
-						"markdownDescription": "Specifies whether to show avatar images instead of author initials and remote icons in the _Commit Graph_",
-						"scope": "window",
-						"order": 25
-					},
-					"gitlens.graph.showUpstreamStatus": {
-						"type": "boolean",
-						"default": true,
-						"markdownDescription": "Specifies whether to show a local branch's upstream status in the _Commit Graph_",
-						"scope": "window",
-						"order": 26
-					},
-					"gitlens.graph.pullRequests.enabled": {
-						"type": "boolean",
-						"default": true,
-						"markdownDescription": "Specifies whether to show associated pull requests on remote branches in the _Commit Graph_. Requires a connection to a supported remote service (e.g. GitHub)",
-						"scope": "window",
-						"order": 27
-					},
-					"gitlens.graph.commitOrdering": {
-						"type": "string",
-						"default": "date",
-						"enum": [
-							"date",
-							"author-date",
-							"topo"
-						],
-						"enumDescriptions": [
-							"Shows commits in reverse chronological order of the commit timestamp",
-							"Shows commits in reverse chronological order of the author timestamp",
-							"Shows commits in reverse chronological order of the commit timestamp, but avoids intermixing multiple lines of history"
-						],
-						"markdownDescription": "Specifies the order by which commits will be shown on the _Commit Graph_",
-						"scope": "window",
-						"order": 30
-					},
-					"gitlens.graph.onlyFollowFirstParent": {
-						"type": "boolean",
-						"default": false,
-						"markdownDescription": "Specifies whether to only follow the first parent when showing commits on the _Commit Graph_",
-						"order": 31
-					},
-					"gitlens.graph.dateStyle": {
-						"type": [
-							"string",
-							"null"
-						],
-						"default": null,
-						"enum": [
-							"relative",
-							"absolute"
-						],
-						"enumDescriptions": [
-							"e.g. 1 day ago",
-							"e.g. July 25th, 2018 7:18pm"
-						],
-						"markdownDescription": "Specifies how dates will be displayed in the _Commit Graph_",
-						"scope": "window",
-						"order": 40
-					},
-					"gitlens.graph.dateFormat": {
-						"type": [
-							"string",
-							"null"
-						],
-						"default": null,
-						"markdownDescription": "Specifies how absolute dates will be formatted in the _Commit Graph_. See the [Moment.js docs](https://momentjs.com/docs/#/displaying/format/) for supported formats",
-						"scope": "window",
-						"order": 41
-					},
-					"gitlens.graph.statusBar.enabled": {
-						"type": "boolean",
-						"default": true,
-						"markdownDescription": "Specifies whether to show the _Commit Graph_ in the status bar",
-						"scope": "window",
-						"order": 50
-					},
 					"gitlens.graph.layout": {
 						"type": "string",
 						"default": "panel",
@@ -1161,7 +944,14 @@
 						],
 						"markdownDescription": "Specifies the preferred layout of the _Commit Graph_",
 						"scope": "window",
-						"order": 99
+						"order": 1
+					},
+					"gitlens.graph.allowMultiple": {
+						"type": "boolean",
+						"default": true,
+						"markdownDescription": "Specifies whether to allow opening multiple instances of the _Commit Graph_ in the editor area",
+						"scope": "window",
+						"order": 2
 					},
 					"gitlens.graph.minimap.enabled": {
 						"type": "boolean",
@@ -1214,12 +1004,228 @@
 						"markdownDescription": "Specifies additional markers to show on the minimap in the _Commit Graph_",
 						"scope": "window",
 						"order": 102
+					},
+					"gitlens.graph.scrollMarkers.enabled": {
+						"type": "boolean",
+						"default": true,
+						"markdownDescription": "Specifies whether to show markers on the scrollbar in the _Commit Graph_",
+						"scope": "window",
+						"order": 200
+					},
+					"gitlens.graph.scrollMarkers.additionalTypes": {
+						"type": "array",
+						"default": [
+							"localBranches",
+							"stashes"
+						],
+						"items": {
+							"type": "string",
+							"enum": [
+								"localBranches",
+								"remoteBranches",
+								"pullRequests",
+								"stashes",
+								"tags"
+							],
+							"enumDescriptions": [
+								"Marks the location of local branches",
+								"Marks the location of remote branches",
+								"Marks the location of pull requests",
+								"Marks the location of stashes",
+								"Marks the location of tags"
+							]
+						},
+						"minItems": 0,
+						"maxItems": 5,
+						"uniqueItems": true,
+						"markdownDescription": "Specifies additional markers to show on the scrollbar in the _Commit Graph_",
+						"scope": "window",
+						"order": 201
+					},
+					"gitlens.graph.sidebar.enabled": {
+						"type": "boolean",
+						"default": false,
+						"markdownDescription": "Specifies whether to show a sidebar on the _Commit Graph_",
+						"scope": "window",
+						"order": 300
+					},
+					"gitlens.graph.branchesVisibility": {
+						"type": "string",
+						"enum": [
+							"all",
+							"smart",
+							"current"
+						],
+						"enumDescriptions": [
+							"Shows all branches",
+							"Shows only relevant branches",
+							"Shows only the current branch"
+						],
+						"default": "all",
+						"markdownDescription": "Specifies the visibility of branches on the _Commit Graph_",
+						"scope": "window",
+						"order": 400
+					},
+					"gitlens.graph.showDetailsView": {
+						"type": [
+							"boolean",
+							"string"
+						],
+						"default": "selection",
+						"enum": [
+							false,
+							"open",
+							"selection"
+						],
+						"enumDescriptions": [
+							"Never shows the _Commit Details_ view automatically",
+							"Shows the _Commit Details_ view automatically only when opening the _Commit Graph_",
+							"Shows the _Commit Details_ view automatically when selection changes in the _Commit Graph_"
+						],
+						"markdownDescription": "Specifies when to show the _Commit Details_ view for the selected row in the _Commit Graph_",
+						"scope": "window",
+						"order": 500
+					},
+					"gitlens.graph.dateFormat": {
+						"type": [
+							"string",
+							"null"
+						],
+						"default": null,
+						"markdownDescription": "Specifies how absolute dates will be formatted in the _Commit Graph_. See the [Moment.js docs](https://momentjs.com/docs/#/displaying/format/) for supported formats",
+						"scope": "window",
+						"order": 600
+					},
+					"gitlens.graph.dateStyle": {
+						"type": [
+							"string",
+							"null"
+						],
+						"default": null,
+						"enum": [
+							"relative",
+							"absolute"
+						],
+						"enumDescriptions": [
+							"e.g. 1 day ago",
+							"e.g. July 25th, 2018 7:18pm"
+						],
+						"markdownDescription": "Specifies how dates will be displayed in the _Commit Graph_",
+						"scope": "window",
+						"order": 601
+					},
+					"gitlens.graph.commitOrdering": {
+						"type": "string",
+						"default": "date",
+						"enum": [
+							"date",
+							"author-date",
+							"topo"
+						],
+						"enumDescriptions": [
+							"Shows commits in reverse chronological order of the commit timestamp",
+							"Shows commits in reverse chronological order of the author timestamp",
+							"Shows commits in reverse chronological order of the commit timestamp, but avoids intermixing multiple lines of history"
+						],
+						"markdownDescription": "Specifies the order by which commits will be shown on the _Commit Graph_",
+						"scope": "window",
+						"order": 602
+					},
+					"gitlens.graph.onlyFollowFirstParent": {
+						"type": "boolean",
+						"default": false,
+						"markdownDescription": "Specifies whether to only follow the first parent when showing commits on the _Commit Graph_",
+						"order": 603
+					},
+					"gitlens.graph.dimMergeCommits": {
+						"type": "boolean",
+						"default": false,
+						"markdownDescription": "Specifies whether to dim (deemphasize) merge commit rows in the _Commit Graph_",
+						"scope": "window",
+						"order": 700
+					},
+					"gitlens.graph.showUpstreamStatus": {
+						"type": "boolean",
+						"default": true,
+						"markdownDescription": "Specifies whether to show a local branch's upstream status in the _Commit Graph_",
+						"scope": "window",
+						"order": 701
+					},
+					"gitlens.graph.showRemoteNames": {
+						"type": "boolean",
+						"default": false,
+						"markdownDescription": "Specifies whether to show remote names on remote branches in the _Commit Graph_",
+						"scope": "window",
+						"order": 702
+					},
+					"gitlens.graph.pullRequests.enabled": {
+						"type": "boolean",
+						"default": true,
+						"markdownDescription": "Specifies whether to show associated pull requests on remote branches in the _Commit Graph_. Requires a connection to a supported remote service (e.g. GitHub)",
+						"scope": "window",
+						"order": 703
+					},
+					"gitlens.graph.avatars": {
+						"type": "boolean",
+						"default": true,
+						"markdownDescription": "Specifies whether to show avatar images instead of author initials and remote icons in the _Commit Graph_",
+						"scope": "window",
+						"order": 704
+					},
+					"gitlens.graph.showGhostRefsOnRowHover": {
+						"type": "boolean",
+						"default": true,
+						"markdownDescription": "Specifies whether to show a ghost branch / tag when hovering over or selecting a row in the _Commit Graph_",
+						"scope": "window",
+						"order": 750
+					},
+					"gitlens.graph.highlightRowsOnRefHover": {
+						"type": "boolean",
+						"default": true,
+						"markdownDescription": "Specifies whether to highlight rows associated with the branch / tag when hovering over it in the _Commit Graph_",
+						"scope": "window",
+						"order": 751
+					},
+					"gitlens.graph.defaultItemLimit": {
+						"type": "number",
+						"default": 500,
+						"markdownDescription": "Specifies the default number of items to show in the _Commit Graph_. Use 0 to specify no limit",
+						"scope": "window",
+						"order": 800
+					},
+					"gitlens.graph.pageItemLimit": {
+						"type": "number",
+						"default": 200,
+						"markdownDescription": "Specifies the number of additional items to fetch when paginating in the _Commit Graph_. Use 0 to specify no limit",
+						"scope": "window",
+						"order": 801
+					},
+					"gitlens.graph.searchItemLimit": {
+						"type": "number",
+						"default": 100,
+						"markdownDescription": "Specifies the number of results to gather when searching in the _Commit Graph_. Use 0 to specify no limit",
+						"scope": "window",
+						"order": 802
+					},
+					"gitlens.graph.scrollRowPadding": {
+						"type": "number",
+						"default": 0,
+						"markdownDescription": "Specifies the number of rows from the edge at which the graph will scroll when using keyboard or search to change the selected row",
+						"scope": "window",
+						"order": 900
+					},
+					"gitlens.graph.statusBar.enabled": {
+						"type": "boolean",
+						"default": true,
+						"markdownDescription": "Specifies whether to show the _Commit Graph_ in the status bar",
+						"scope": "window",
+						"order": 1000
 					}
 				}
 			},
 			{
 				"id": "focus",
-				"title": "Launchpad (Preview)",
+				"title": "Launchpad (ᴘʀᴏ)",
 				"order": 60,
 				"properties": {
 					"gitlens.launchpad.ignoredRepositories": {
@@ -1344,13 +1350,6 @@
 						"scope": "window",
 						"order": 160
 					},
-					"gitlens.launchpad.indicator.openInEditor": {
-						"type": "boolean",
-						"default": false,
-						"markdownDescription": "Specifies whether to open _Launchpad_ as an editor tab when clicking on the status bar indicator",
-						"scope": "window",
-						"order": 170
-					},
 					"gitlens.launchpad.allowMultiple": {
 						"type": "boolean",
 						"default": true,
@@ -1369,7 +1368,7 @@
 			},
 			{
 				"id": "cloud-patches",
-				"title": "Cloud Patches (Preview)",
+				"title": "Cloud Patches (ᴘʀᴇᴠɪᴇᴡ)",
 				"order": 70,
 				"properties": {
 					"gitlens.cloudPatches.enabled": {
@@ -1392,6 +1391,13 @@
 						"markdownDescription": "Specifies whether to try to collapse the opened worktrees into a single (common) repository in the views when possible",
 						"scope": "window",
 						"order": 1
+					},
+					"gitlens.views.showCurrentBranchOnTop": {
+						"type": "boolean",
+						"default": true,
+						"markdownDescription": "Specifies whether to always show the current branch at the top of the views",
+						"scope": "window",
+						"order": 2
 					},
 					"gitlens.views.defaultItemLimit": {
 						"type": "number",
@@ -1528,7 +1534,7 @@
 			},
 			{
 				"id": "launchpad-view",
-				"title": "Launchpad View",
+				"title": "Launchpad View (ᴇxᴘᴇʀɪᴍᴇɴᴛᴀʟ)",
 				"order": 101,
 				"properties": {
 					"gitlens.views.launchpad.enabled": {
@@ -2168,7 +2174,7 @@
 			},
 			{
 				"id": "visual-history",
-				"title": "Visual File History",
+				"title": "Visual File History (ᴘʀᴏ)",
 				"order": 155,
 				"properties": {
 					"gitlens.visualHistory.allowMultiple": {
@@ -2573,7 +2579,7 @@
 			},
 			{
 				"id": "worktrees-view",
-				"title": "Worktrees View",
+				"title": "Worktrees View (ᴘʀᴏ)",
 				"order": 210,
 				"properties": {
 					"gitlens.worktrees.promptForLocation": {
@@ -2883,7 +2889,7 @@
 			},
 			{
 				"id": "cloud-patches-view",
-				"title": "Cloud Patches View",
+				"title": "Cloud Patches View (ᴘʀᴇᴠɪᴇᴡ)",
 				"order": 240,
 				"properties": {
 					"gitlens.views.drafts.files.layout": {
@@ -3003,7 +3009,7 @@
 			},
 			{
 				"id": "workspaces-view",
-				"title": "GitKraken Workspaces View",
+				"title": "GitKraken Workspaces View (ᴘʀᴇᴠɪᴇᴡ)",
 				"order": 260,
 				"properties": {
 					"gitlens.views.workspaces.showBranchComparison": {
@@ -3640,7 +3646,7 @@
 			},
 			{
 				"id": "ai",
-				"title": "AI (Experimental)",
+				"title": "AI (ᴇxᴘᴇʀɪᴍᴇɴᴛᴀʟ)",
 				"order": 1000,
 				"properties": {
 					"gitlens.ai.experimental.generateCommitMessage.enabled": {
@@ -7397,6 +7403,12 @@
 				"enablement": "!operationInProgress"
 			},
 			{
+				"command": "gitlens.views.openInWorktree",
+				"title": "Open in Worktree",
+				"category": "GitLens",
+				"icon": "$(window)"
+			},
+			{
 				"command": "gitlens.views.openWorktree",
 				"title": "Open Worktree",
 				"category": "GitLens",
@@ -7407,6 +7419,12 @@
 				"title": "Open Worktree in New Window",
 				"category": "GitLens",
 				"icon": "$(empty-window)"
+			},
+			{
+				"command": "gitlens.graph.openInWorktree",
+				"title": "Open in Worktree",
+				"category": "GitLens",
+				"icon": "$(window)"
 			},
 			{
 				"command": "gitlens.views.openWorktreeInNewWindow.multi",
@@ -9885,11 +9903,11 @@
 				},
 				{
 					"command": "gitlens.showFocusPage",
-					"when": "gitlens:enabled"
+					"when": "false && gitlens:enabled"
 				},
 				{
 					"command": "gitlens.launchpad.split",
-					"when": "gitlens:enabled && config.gitlens.launchpad.allowMultiple"
+					"when": "false && gitlens:enabled && config.gitlens.launchpad.allowMultiple"
 				},
 				{
 					"command": "gitlens.launchpad.indicator.toggle",
@@ -10996,11 +11014,19 @@
 					"when": "false"
 				},
 				{
+					"command": "gitlens.views.openInWorktree",
+					"when": "false"
+				},
+				{
 					"command": "gitlens.views.openWorktreeInNewWindow",
 					"when": "false"
 				},
 				{
 					"command": "gitlens.views.openWorktreeInNewWindow.multi",
+					"when": "false"
+				},
+				{
+					"command": "gitlens.graph.openInWorktree",
 					"when": "false"
 				},
 				{
@@ -13948,12 +13974,12 @@
 				},
 				{
 					"command": "gitlens.views.switchToAnotherBranch",
-					"when": "!gitlens:readonly && !gitlens:untrusted && !gitlens:hasVirtualFolders && viewItem =~ /gitlens:branch\\b(?=.*?\\b\\+current\\b)(?!.*?\\b\\+closed\\b)/",
+					"when": "!gitlens:readonly && !gitlens:untrusted && !gitlens:hasVirtualFolders && viewItem =~ /gitlens:branch\\b(?=.*?\\b\\+(current|checkedout)\\b)(?!.*?\\b\\+closed\\b)/",
 					"group": "inline@7"
 				},
 				{
 					"command": "gitlens.views.switchToBranch",
-					"when": "!gitlens:readonly && !gitlens:untrusted && !gitlens:hasVirtualFolders && viewItem =~ /gitlens:branch\\b(?!.*?\\b\\+(current|closed|worktree)\\b)/",
+					"when": "!gitlens:readonly && !gitlens:untrusted && !gitlens:hasVirtualFolders && viewItem =~ /gitlens:branch\\b(?!.*?\\b\\+(current|closed|checkedout|worktree)\\b)/",
 					"group": "inline@7"
 				},
 				{
@@ -14043,13 +14069,18 @@
 					"group": "1_gitlens_action@2"
 				},
 				{
+					"command": "gitlens.views.openInWorktree",
+					"when": "!listMultiSelection && !gitlens:hasVirtualFolders && viewItem =~ /gitlens:branch\\b(?!.*?\\b\\+(current|closed|checkedout|worktree)\\b)/",
+					"group": "1_gitlens_action@3"
+				},
+				{
 					"command": "gitlens.views.switchToAnotherBranch",
-					"when": "!listMultiSelection && !gitlens:readonly && !gitlens:untrusted && !gitlens:hasVirtualFolders && viewItem =~ /gitlens:branch\\b(?=.*?\\b\\+current\\b)(?!.*?\\b\\+closed\\b)/",
+					"when": "!listMultiSelection && !gitlens:readonly && !gitlens:untrusted && !gitlens:hasVirtualFolders && viewItem =~ /gitlens:branch\\b(?=.*?\\b\\+(current|checkedout)\\b)(?!.*?\\b\\+closed\\b)/",
 					"group": "1_gitlens_action@1"
 				},
 				{
 					"command": "gitlens.views.switchToBranch",
-					"when": "!listMultiSelection && !gitlens:readonly && !gitlens:untrusted && !gitlens:hasVirtualFolders && viewItem =~ /gitlens:branch\\b(?!.*?\\b\\+(current|closed|worktree)\\b)/",
+					"when": "!listMultiSelection && !gitlens:readonly && !gitlens:untrusted && !gitlens:hasVirtualFolders && viewItem =~ /gitlens:branch\\b(?!.*?\\b\\+(current|closed|checkedout|worktree)\\b)/",
 					"group": "1_gitlens_action@1"
 				},
 				{
@@ -14094,12 +14125,12 @@
 				},
 				{
 					"command": "gitlens.views.deleteBranch",
-					"when": "!listMultiSelection && !gitlens:readonly && !gitlens:untrusted && !gitlens:hasVirtualFolders && viewItem =~ /gitlens:branch\\b(?!.*?\\b\\+current\\b)(?!.*?\\b\\+closed\\b)/",
+					"when": "!listMultiSelection && !gitlens:readonly && !gitlens:untrusted && !gitlens:hasVirtualFolders && viewItem =~ /gitlens:branch\\b(?!.*?\\b\\+(current|checkedout)\\b)(?!.*?\\b\\+closed\\b)/",
 					"group": "1_gitlens_actions@7"
 				},
 				{
 					"command": "gitlens.views.deleteBranch.multi",
-					"when": "listMultiSelection && !gitlens:readonly && !gitlens:untrusted && !gitlens:hasVirtualFolders && viewItem =~ /gitlens:branch\\b(?!.*?\\b\\+current\\b)(?!.*?\\b\\+closed\\b)/",
+					"when": "listMultiSelection && !gitlens:readonly && !gitlens:untrusted && !gitlens:hasVirtualFolders && viewItem =~ /gitlens:branch\\b(?!.*?\\b\\+(current|checkedout)\\b)(?!.*?\\b\\+closed\\b)/",
 					"group": "1_gitlens_actions@7"
 				},
 				{
@@ -14661,6 +14692,11 @@
 					"command": "gitlens.openPullRequestOnRemote",
 					"when": "!listMultiSelection && viewItem =~ /gitlens:(pullrequest\\b|launchpad:item\\b(?=.*?\\b\\+pr\\b))/",
 					"group": "1_gitlens_actions@99"
+				},
+				{
+					"command": "gitlens.views.openInWorktree",
+					"when": "!listMultiSelection && viewItem =~ /gitlens:(pullrequest\\b|launchpad:item\\b(?=.*?\\b\\+pr\\b))/",
+					"group": "1_gitlens_actions@100"
 				},
 				{
 					"command": "gitlens.showInCommitGraph",
@@ -15468,12 +15504,12 @@
 				},
 				{
 					"command": "gitlens.views.deleteWorktree",
-					"when": "!listMultiSelection && !gitlens:readonly && viewItem =~ /gitlens:worktree\\b(?!.*?\\b\\+(active|main)\\b)/",
+					"when": "!listMultiSelection && !gitlens:readonly && viewItem =~ /gitlens:worktree\\b(?!.*?\\b\\+(active|default)\\b)/",
 					"group": "6_gitlens_actions@1"
 				},
 				{
 					"command": "gitlens.views.deleteWorktree.multi",
-					"when": "listMultiSelection && !gitlens:readonly && viewItem =~ /gitlens:worktree\\b(?!.*?\\b\\+(active|main)\\b)/",
+					"when": "listMultiSelection && !gitlens:readonly && viewItem =~ /gitlens:worktree\\b(?!.*?\\b\\+(active|default)\\b)/",
 					"group": "6_gitlens_actions@1"
 				},
 				{
@@ -15554,13 +15590,18 @@
 					"group": "1_gitlens_action@2"
 				},
 				{
+					"command": "gitlens.graph.openInWorktree",
+					"when": "!gitlens:hasVirtualFolders && webviewItem =~ /gitlens:branch\\b(?!.*?\\b\\+(current|checkedout|worktree)\\b)/",
+					"group": "1_gitlens_action@3"
+				},
+				{
 					"command": "gitlens.graph.switchToAnotherBranch",
-					"when": "!gitlens:readonly && !gitlens:untrusted && !gitlens:hasVirtualFolders && webviewItem =~ /gitlens:branch\\b(?=.*?\\b\\+current\\b)/",
+					"when": "!gitlens:readonly && !gitlens:untrusted && !gitlens:hasVirtualFolders && webviewItem =~ /gitlens:branch\\b(?=.*?\\b\\+(current|checkedout)\\b)/",
 					"group": "1_gitlens_action@1"
 				},
 				{
 					"command": "gitlens.graph.switchToBranch",
-					"when": "!gitlens:readonly && !gitlens:untrusted && !gitlens:hasVirtualFolders && webviewItem =~ /gitlens:branch\\b(?!.*?\\b\\+(current|worktree)\\b)/",
+					"when": "!gitlens:readonly && !gitlens:untrusted && !gitlens:hasVirtualFolders && webviewItem =~ /gitlens:branch\\b(?!.*?\\b\\+(current|checkedout|worktree)\\b)/",
 					"group": "1_gitlens_action@1"
 				},
 				{
@@ -15605,7 +15646,7 @@
 				},
 				{
 					"command": "gitlens.graph.deleteBranch",
-					"when": "!gitlens:readonly && !gitlens:untrusted && !gitlens:hasVirtualFolders && webviewItem =~ /gitlens:branch\\b(?!.*?\\b\\+current\\b)/",
+					"when": "!gitlens:readonly && !gitlens:untrusted && !gitlens:hasVirtualFolders && webviewItem =~ /gitlens:branch\\b(?!.*?\\b\\+(current|checkedout)\\b)/",
 					"group": "1_gitlens_actions@7"
 				},
 				{
@@ -17541,13 +17582,13 @@
 			},
 			{
 				"view": "gitlens.views.worktrees",
-				"contents": "Special: 1st seat of Pro is now 50%+ off",
+				"contents": "Limited-time Sale: Save 33% or more on your 1st seat of Pro.",
 				"when": "gitlens:plus:required && gitlens:plus:state == 4 && (gitlens:promo == pro50 || !gitlens:promo)"
 			},
 			{
 				"view": "gitlens.views.worktrees",
-				"contents": "DevEx Days 24 Sale: Save up to 80% on GitLens Pro - lowest price of the year!",
-				"when": "gitlens:plus:required && gitlens:plus:state == 4 && gitlens:promo == devexdays24"
+				"contents": "Launchpad Sale: Save 75% or more on GitLens Pro",
+				"when": "gitlens:plus:required && gitlens:plus:state == 4 && gitlens:promo =~ /(launchpad|launchpad-extended)/"
 			},
 			{
 				"view": "gitlens.views.worktrees",
@@ -17850,7 +17891,7 @@
 					{
 						"id": "launchpad",
 						"title": "Unblock your team with Launchpad",
-						"description": "**Launchpad** ᴘʀᴇᴠɪᴇᴡ brings all of your GitHub pull requests into a unified, actionable list to better track work in progress, pending work, reviews, and more. Stay focused and take action on the most important items to keep your team unblocked. [Learn more](https://gitkraken.com/solutions/launchpad?utm_source=gitlens-extension&utm_medium=in-app-links)\n\n[Open Launchpad](command:gitlens.showLaunchpad?%7B%22source%22%3A%22walkthrough%22%7D)",
+						"description": "**Launchpad** ᴘʀᴏ brings all of your GitHub pull requests into a unified, actionable list to better track work in progress, pending work, reviews, and more. Stay focused and take action on the most important items to keep your team unblocked. [Learn more](https://gitkraken.com/solutions/launchpad?utm_source=gitlens-extension&utm_medium=in-app-links)\n\n[Open Launchpad](command:gitlens.showLaunchpad?%7B%22source%22%3A%22walkthrough%22%7D)",
 						"media": {
 							"altText": "Illustrations of Launchpad",
 							"svg": "walkthroughs/welcome/launchpad-quick.svg"
@@ -17920,6 +17961,7 @@
 		"rebuild": "yarn run reset && yarn run build",
 		"reset": "yarn run clean && yarn --frozen-lockfile",
 		"test": "node ./out/test/runTest.js",
+		"test:e2e": "playwright test -c tests/e2e/playwright.config.ts",
 		"watch": "webpack --watch --mode development",
 		"watch:extension": "webpack --watch --mode development --config-name extension",
 		"watch:webviews": "webpack --watch --mode development --config-name webviews",
@@ -17935,26 +17977,29 @@
 		"vscode:prepublish": "yarn run bundle"
 	},
 	"dependencies": {
-		"@gitkraken/gitkraken-components": "10.5.1",
+		"@gitkraken/gitkraken-components": "10.6.0",
 		"@gitkraken/provider-apis": "0.24.2",
 		"@gitkraken/shared-web-components": "0.1.1-rc.15",
+		"@lit/context": "1.1.2",
 		"@lit/react": "1.0.5",
+		"@lit/task": "1.0.1",
 		"@microsoft/fast-element": "1.13.0",
 		"@octokit/graphql": "8.1.1",
 		"@octokit/request": "9.1.1",
 		"@octokit/types": "13.5.0",
 		"@opentelemetry/api": "1.9.0",
-		"@opentelemetry/exporter-trace-otlp-http": "0.52.1",
-		"@opentelemetry/sdk-trace-base": "1.25.1",
-		"@shoelace-style/shoelace": "2.15.1",
+		"@opentelemetry/exporter-trace-otlp-http": "0.53.0",
+		"@opentelemetry/sdk-trace-base": "1.26.0",
+		"@opentelemetry/semantic-conventions": "1.27.0",
+		"@shoelace-style/shoelace": "2.16.0",
 		"@vscode/codicons": "0.0.36",
 		"@vscode/webview-ui-toolkit": "1.4.0",
-		"ansi-regex": "6.0.1",
-		"billboard.js": "3.12.4",
+		"ansi-regex": "6.1.0",
+		"billboard.js": "3.13.0",
 		"fast-string-truncated-width": "1.1.0",
 		"https-proxy-agent": "5.0.1",
 		"iconv-lite": "0.6.3",
-		"lit": "3.1.4",
+		"lit": "3.2.0",
 		"marked": "12.0.2",
 		"node-fetch": "2.7.0",
 		"os-browserify": "0.3.0",
@@ -17965,64 +18010,66 @@
 	},
 	"devDependencies": {
 		"@eamodio/eslint-lite-webpack-plugin": "0.0.8",
-		"@swc/core": "1.7.3",
+		"@playwright/test": "1.47.1",
+		"@swc/core": "1.7.26",
 		"@twbs/fantasticon": "3.0.0",
-		"@types/mocha": "10.0.7",
+		"@types/mocha": "10.0.8",
 		"@types/node": "18.15.0",
 		"@types/react": "17.0.80",
 		"@types/react-dom": "17.0.21",
 		"@types/sortablejs": "1.15.8",
 		"@types/vscode": "1.82.0",
-		"@typescript-eslint/eslint-plugin": "7.17.0",
-		"@typescript-eslint/parser": "7.17.0",
+		"@typescript-eslint/eslint-plugin": "8.5.0",
+		"@typescript-eslint/parser": "8.5.0",
 		"@vscode/test-electron": "2.4.1",
-		"@vscode/test-web": "0.0.56",
-		"@vscode/vsce": "2.31.1",
+		"@vscode/test-web": "0.0.60",
+		"@vscode/vsce": "3.1.0",
 		"circular-dependency-plugin": "5.2.2",
 		"clean-webpack-plugin": "4.0.0",
-		"concurrently": "8.2.2",
+		"concurrently": "9.0.1",
 		"copy-webpack-plugin": "12.0.2",
 		"csp-html-webpack-plugin": "5.1.0",
 		"css-loader": "7.1.2",
 		"css-minimizer-webpack-plugin": "7.0.0",
-		"cssnano-preset-advanced": "7.0.4",
-		"esbuild": "0.23.0",
+		"cssnano-preset-advanced": "7.0.6",
+		"esbuild": "0.23.1",
 		"esbuild-loader": "4.2.2",
 		"esbuild-sass-plugin": "3.3.1",
 		"eslint": "8.57.0",
 		"eslint-cli": "1.1.1",
-		"eslint-import-resolver-typescript": "3.6.1",
+		"eslint-import-resolver-typescript": "3.6.3",
 		"eslint-plugin-anti-trojan-source": "1.1.1",
-		"eslint-plugin-import": "2.29.1",
-		"eslint-plugin-lit": "1.14.0",
-		"eslint-plugin-wc": "2.1.0",
+		"eslint-plugin-import-x": "4.2.1",
+		"eslint-plugin-lit": "1.15.0",
+		"eslint-plugin-wc": "2.1.1",
 		"fork-ts-checker-webpack-plugin": "6.5.3",
 		"glob": "11.0.0",
 		"html-loader": "5.1.0",
 		"html-webpack-plugin": "5.6.0",
 		"image-minimizer-webpack-plugin": "4.1.0",
-		"license-checker-rseidelsohn": "4.3.0",
+		"license-checker-rseidelsohn": "4.4.2",
 		"lz-string": "1.5.0",
-		"mini-css-extract-plugin": "2.9.0",
-		"mocha": "10.7.0",
+		"mini-css-extract-plugin": "2.9.1",
+		"mocha": "10.7.3",
+		"playwright": "1.47.1",
 		"prettier": "3.1.0",
 		"sass": "1.77.6",
-		"sass-loader": "16.0.0",
+		"sass-loader": "16.0.1",
 		"schema-utils": "4.2.0",
 		"sharp": "0.32.6",
 		"svgo": "3.3.2",
 		"terser-webpack-plugin": "5.3.10",
 		"ts-loader": "9.5.1",
 		"tsc-alias": "1.8.10",
-		"typescript": "5.6.0-beta",
-		"webpack": "5.93.0",
+		"typescript": "5.6.2",
+		"webpack": "5.94.0",
 		"webpack-bundle-analyzer": "4.10.2",
 		"webpack-cli": "5.1.4",
 		"webpack-node-externals": "3.0.0",
 		"webpack-require-from": "1.8.6"
 	},
 	"resolutions": {
-		"esbuild": "0.23.0",
+		"esbuild": "0.23.1",
 		"iconv-lite": "0.6.3",
 		"node-fetch": "2.7.0",
 		"semver-regex": "4.0.5"

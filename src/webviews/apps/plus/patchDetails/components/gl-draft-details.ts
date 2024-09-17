@@ -745,7 +745,7 @@ export class GlDraftDetails extends GlTreeBase {
 		this.emit('gl-patch-file-compare-working', {
 			...file,
 			showOptions: {
-				preview: false,
+				preview: !e.detail.dblClick,
 				viewColumn: e.detail.altKey ? BesideViewColumn : undefined,
 			},
 		});
@@ -758,7 +758,7 @@ export class GlDraftDetails extends GlTreeBase {
 		this.emit('gl-patch-file-open', {
 			...file,
 			showOptions: {
-				preview: false,
+				preview: !e.detail.dblClick,
 				viewColumn: e.detail.altKey ? BesideViewColumn : undefined,
 			},
 		});
@@ -797,7 +797,7 @@ export class GlDraftDetails extends GlTreeBase {
 		this.emit('gl-patch-file-compare-previous', { ...file });
 	}
 
-	onApplyPatch(e?: MouseEvent | KeyboardEvent, target: 'current' | 'branch' | 'worktree' = 'current') {
+	onApplyPatch(_e?: MouseEvent | KeyboardEvent, target: 'current' | 'branch' | 'worktree' = 'current') {
 		if (this.canSubmit === false) {
 			this.validityMessage = 'Please select changes to apply';
 			return;

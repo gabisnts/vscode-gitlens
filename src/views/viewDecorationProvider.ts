@@ -1,8 +1,8 @@
 import type { CancellationToken, Event, FileDecoration, FileDecorationProvider } from 'vscode';
 import { Disposable, EventEmitter, ThemeColor, Uri, window } from 'vscode';
 import { getQueryDataFromScmGitUri } from '../@types/vscode.git.uri';
-import type { Colors } from '../constants';
 import { GlyphChars, Schemes } from '../constants';
+import type { Colors } from '../constants.colors';
 import type { GitBranchStatus } from '../git/models/branch';
 import type { GitFileStatus } from '../git/models/file';
 
@@ -59,7 +59,7 @@ function provideViewNodeDecoration(uri: Uri, token: CancellationToken): FileDeco
 }
 
 interface BranchViewDecoration {
-	status: GitBranchStatus;
+	status: GitBranchStatus | 'unpublished';
 	current?: boolean;
 	starred?: boolean;
 	worktree?: { opened: boolean };

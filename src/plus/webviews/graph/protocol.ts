@@ -23,6 +23,7 @@ import type {
 	WorkDirStats,
 } from '@gitkraken/gitkraken-components';
 import type { Config, DateStyle, GraphBranchesVisibility } from '../../../config';
+import type { SearchQuery } from '../../../constants.search';
 import type { RepositoryVisibility } from '../../../git/gitProvider';
 import type { GitTrackingState } from '../../../git/models/branch';
 import type { GitGraphRowType } from '../../../git/models/graph';
@@ -35,7 +36,7 @@ import type {
 	GitTagReference,
 } from '../../../git/models/reference';
 import type { ProviderReference } from '../../../git/models/remoteProvider';
-import type { GitSearchResultData, SearchQuery } from '../../../git/search';
+import type { GitSearchResultData } from '../../../git/search';
 import type { DateTimeFormat } from '../../../system/date';
 import type { WebviewItemContext, WebviewItemGroupContext } from '../../../system/webview';
 import type { IpcScope, WebviewState } from '../../../webviews/protocol';
@@ -150,7 +151,12 @@ export interface GraphRepository {
 	name: string;
 	path: string;
 	isVirtual: boolean;
-	isConnected: boolean;
+	provider?: {
+		name: string;
+		connected: boolean;
+		icon?: string;
+		url?: string;
+	};
 }
 
 export interface GraphCommitIdentity {
@@ -189,6 +195,7 @@ export interface GraphComponentConfig {
 	scrollRowPadding?: number;
 	showGhostRefsOnRowHover?: boolean;
 	showRemoteNamesOnRefs?: boolean;
+	sidebar: boolean;
 }
 
 export interface GraphColumnConfig {
@@ -220,12 +227,6 @@ export type UpdateStateCallback = (
 // COMMANDS
 
 export const ChooseRepositoryCommand = new IpcCommand(scope, 'chooseRepository');
-
-export interface ChooseRefParams {
-	alt: boolean;
-}
-export type DidChooseRefParams = { name: string; sha: string } | undefined;
-export const ChooseRefRequest = new IpcRequest<ChooseRefParams, DidChooseRefParams>(scope, 'chooseRef');
 
 export type DoubleClickedParams =
 	| {
@@ -306,6 +307,12 @@ export const UpdateSelectionCommand = new IpcCommand<UpdateSelectionParams>(scop
 
 // REQUESTS
 
+export interface ChooseRefParams {
+	alt: boolean;
+}
+export type DidChooseRefParams = { name: string; sha: string } | undefined;
+export const ChooseRefRequest = new IpcRequest<ChooseRefParams, DidChooseRefParams>(scope, 'chooseRef');
+
 export interface EnsureRowParams {
 	id: string;
 	select?: boolean;
@@ -315,6 +322,17 @@ export interface DidEnsureRowParams {
 	remapped?: string;
 }
 export const EnsureRowRequest = new IpcRequest<EnsureRowParams, DidEnsureRowParams>(scope, 'rows/ensure');
+
+export type DidGetCountParams =
+	| {
+			branches: number;
+			remotes: number;
+			stashes?: number;
+			tags: number;
+			worktrees?: number;
+	  }
+	| undefined;
+export const GetCountsRequest = new IpcRequest<void, DidGetCountParams>(scope, 'counts');
 
 export type GetRowHoverParams = {
 	type: GitGraphRowType;

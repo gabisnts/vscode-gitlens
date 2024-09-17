@@ -12,6 +12,7 @@ import { PageableResult } from '../../system/paging';
 import { normalizePath, relative } from '../../system/path';
 import { pad, sortCompare } from '../../system/string';
 import { getWorkspaceFriendlyPath } from '../../system/utils';
+import { getBranchIconPath } from '../utils/branch-utils';
 import type { GitBranch } from './branch';
 import { shortenRevision } from './reference';
 import type { Repository } from './repository';
@@ -20,7 +21,7 @@ import type { GitStatus } from './status';
 export class GitWorktree {
 	constructor(
 		private readonly container: Container,
-		public readonly main: boolean,
+		public readonly isDefault: boolean,
 		public readonly type: 'bare' | 'branch' | 'detached',
 		public readonly repoPath: string,
 		public readonly uri: Uri,
@@ -187,7 +188,7 @@ export function createWorktreeQuickPickItem(
 			break;
 		case 'branch':
 			label = worktree.branch?.name ?? 'unknown';
-			iconPath = new ThemeIcon('git-branch');
+			iconPath = getBranchIconPath(Container.instance, worktree.branch);
 			break;
 		case 'detached':
 			label = shortenRevision(worktree.sha);
@@ -218,7 +219,7 @@ export function createWorktreeQuickPickItem(
 export async function getWorktreeForBranch(
 	repo: Repository,
 	branchName: string,
-	upstreamNames: string | string[],
+	upstreamNames?: string | string[],
 	worktrees?: GitWorktree[],
 	branches?: PageableResult<GitBranch> | Map<unknown, GitBranch>,
 ): Promise<GitWorktree | undefined> {
@@ -250,6 +251,10 @@ export async function getWorktreeForBranch(
 	}
 
 	return undefined;
+}
+
+export function getWorktreeId(repoPath: string, name: string): string {
+	return `${repoPath}|worktrees/${name}`;
 }
 
 export function isWorktree(worktree: any): worktree is GitWorktree {
@@ -332,23 +337,40 @@ export function sortWorktrees(worktrees: GitWorktree[] | WorktreeQuickPickItem[]
 	}
 }
 
-export async function getWorktreesByBranch(repos: Repository | Repository[] | undefined) {
+export async function getWorktreesByBranch(
+	repos: Repository | Repository[] | undefined,
+	options?: { includeDefault?: boolean },
+) {
 	const worktreesByBranch = new Map<string, GitWorktree>();
 	if (repos == null) return worktreesByBranch;
 
 	async function addWorktrees(repo: Repository) {
-		const worktrees = await repo.getWorktrees();
-		for (const wt of worktrees) {
-			if (wt.branch == null || wt.main) continue;
-
-			worktreesByBranch.set(wt.branch.id, wt);
-		}
+		groupWorktreesByBranch(await repo.getWorktrees(), {
+			includeDefault: options?.includeDefault,
+			worktreesByBranch: worktreesByBranch,
+		});
 	}
 
 	if (!Array.isArray(repos)) {
 		await addWorktrees(repos);
 	} else {
 		await Promise.allSettled(repos.map(async r => addWorktrees(r)));
+	}
+
+	return worktreesByBranch;
+}
+
+export function groupWorktreesByBranch(
+	worktrees: GitWorktree[],
+	options?: { includeDefault?: boolean; worktreesByBranch?: Map<string, GitWorktree> },
+) {
+	const worktreesByBranch = options?.worktreesByBranch ?? new Map<string, GitWorktree>();
+	if (worktrees == null) return worktreesByBranch;
+
+	for (const wt of worktrees) {
+		if (wt.branch == null || (!options?.includeDefault && wt.isDefault)) continue;
+
+		worktreesByBranch.set(wt.branch.id, wt);
 	}
 
 	return worktreesByBranch;

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-deprecated */
 import type { Range } from 'vscode';
 import type { Container } from '../../container';
 import { filterMap } from '../../system/array';
@@ -408,6 +409,7 @@ export function parseGitLog(
 	reverse: boolean,
 	range: Range | undefined,
 	stashes?: Map<string, GitStashCommit>,
+	includeOnlyStashes?: boolean,
 	hasMoreOverride?: boolean,
 ): GitLog | undefined {
 	using sw = maybeStopWatch(`Git.parseLog(${repoPath}, fileName=${fileName}, sha=${sha})`, {
@@ -685,6 +687,8 @@ export function parseGitLog(
 				}
 				first = false;
 
+				if (includeOnlyStashes && !stashes?.has(entry.sha!)) continue;
+
 				const commit = commits.get(entry.sha!);
 				if (commit === undefined) {
 					i++;
@@ -815,7 +819,6 @@ export function parseGitLogSimple(
 	skip: number,
 	skipRef?: string,
 ): [string | undefined, string | undefined, GitFileIndexStatus | undefined] {
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars
 	using _sw = maybeStopWatch('Git.parseLogSimple', { log: false, logLevel: 'debug' });
 
 	let ref;
@@ -836,9 +839,9 @@ export function parseGitLogSimple(
 		[, ref, diffFile, diffRenamed, status, file, renamed] = match;
 
 		// Stops excessive memory usage -- https://bugs.chromium.org/p/v8/issues/detail?id=2869
-		file = ` ${diffRenamed || diffFile || renamed || file}`.substr(1);
+		file = ` ${diffRenamed || diffFile || renamed || file}`.substring(1);
 		// Stops excessive memory usage -- https://bugs.chromium.org/p/v8/issues/detail?id=2869
-		status = status == null || status.length === 0 ? undefined : ` ${status}`.substr(1);
+		status = status == null || status.length === 0 ? undefined : ` ${status}`.substring(1);
 	} while (skip >= 0);
 
 	// Ensure the regex state is reset
@@ -846,7 +849,7 @@ export function parseGitLogSimple(
 
 	// Stops excessive memory usage -- https://bugs.chromium.org/p/v8/issues/detail?id=2869
 	return [
-		ref == null || ref.length === 0 ? undefined : ` ${ref}`.substr(1),
+		ref == null || ref.length === 0 ? undefined : ` ${ref}`.substring(1),
 		file,
 		status as GitFileIndexStatus | undefined,
 	];
@@ -856,7 +859,6 @@ export function parseGitLogSimpleRenamed(
 	data: string,
 	originalFileName: string,
 ): [string | undefined, string | undefined, GitFileIndexStatus | undefined] {
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars
 	using _sw = maybeStopWatch('Git.parseLogSimpleRenamed', { log: false, logLevel: 'debug' });
 
 	let match = logFileSimpleRenamedRegex.exec(data);
@@ -882,9 +884,9 @@ export function parseGitLogSimpleRenamed(
 		}
 
 		// Stops excessive memory usage -- https://bugs.chromium.org/p/v8/issues/detail?id=2869
-		file = ` ${renamed || file}`.substr(1);
+		file = ` ${renamed || file}`.substring(1);
 		// Stops excessive memory usage -- https://bugs.chromium.org/p/v8/issues/detail?id=2869
-		status = status == null || status.length === 0 ? undefined : ` ${status}`.substr(1);
+		status = status == null || status.length === 0 ? undefined : ` ${status}`.substring(1);
 
 		break;
 	} while (true);
@@ -894,7 +896,7 @@ export function parseGitLogSimpleRenamed(
 
 	return [
 		// Stops excessive memory usage -- https://bugs.chromium.org/p/v8/issues/detail?id=2869
-		ref == null || ref.length === 0 || file == null ? undefined : ` ${ref}`.substr(1),
+		ref == null || ref.length === 0 || file == null ? undefined : ` ${ref}`.substring(1),
 		file,
 		status as GitFileIndexStatus | undefined,
 	];

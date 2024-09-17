@@ -2,9 +2,9 @@ import type { CancellationToken, Event, MessageItem } from 'vscode';
 import { EventEmitter, window } from 'vscode';
 import type { DynamicAutolinkReference } from '../../annotations/autolinks';
 import type { AutolinkReference } from '../../config';
-import type { Sources } from '../../constants';
+import type { Sources } from '../../constants.telemetry';
 import type { Container } from '../../container';
-import { AuthenticationError, CancellationError, ProviderRequestClientError } from '../../errors';
+import { AuthenticationError, CancellationError, RequestClientError } from '../../errors';
 import type { PagedResult } from '../../git/gitProvider';
 import type { Account, UnidentifiedAuthor } from '../../git/models/author';
 import type { DefaultBranch } from '../../git/models/defaultBranch';
@@ -140,7 +140,7 @@ export abstract class IntegrationBase<
 	async connect(source: Sources): Promise<boolean> {
 		try {
 			return Boolean(await this.ensureSession({ createIfNeeded: true, source: source }));
-		} catch (ex) {
+		} catch (_ex) {
 			return false;
 		}
 	}
@@ -193,8 +193,9 @@ export abstract class IntegrationBase<
 		this._session = null;
 
 		if (connected) {
-			// Don't store the disconnected flag if this only for this current VS Code session (will be re-connected on next restart)
-			if (!options?.currentSessionOnly) {
+			// Don't store the disconnected flag if silently disconnecting or disconnecting this only for
+			// this current VS Code session (will be re-connected on next restart)
+			if (!options?.currentSessionOnly && !options?.silent) {
 				void this.container.storage.storeWorkspace(this.connectedKey, false);
 			}
 
@@ -271,7 +272,7 @@ export abstract class IntegrationBase<
 
 		Logger.error(ex, scope);
 
-		if (ex instanceof AuthenticationError || ex instanceof ProviderRequestClientError) {
+		if (ex instanceof AuthenticationError || ex instanceof RequestClientError) {
 			this.trackRequestException();
 		}
 		return defaultValue;
@@ -1177,7 +1178,7 @@ export abstract class HostingIntegration<
 		}
 
 		try {
-			return api.getPullRequestsForRepos(providerId, reposOrRepoIds, {
+			return await api.getPullRequestsForRepos(providerId, reposOrRepoIds, {
 				...getPullRequestsOptions,
 				cursor: options?.cursor,
 				baseUrl: options?.customUrl,

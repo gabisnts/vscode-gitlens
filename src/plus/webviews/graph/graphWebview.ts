@@ -16,12 +16,14 @@ import type {
 	GraphMinimapMarkersAdditionalTypes,
 	GraphScrollMarkersAdditionalTypes,
 } from '../../../config';
-import type { StoredGraphFilters, StoredGraphRefType } from '../../../constants';
-import { Commands, GlyphChars } from '../../../constants';
+import { GlyphChars } from '../../../constants';
+import { Commands } from '../../../constants.commands';
+import type { StoredGraphFilters, StoredGraphRefType } from '../../../constants.storage';
 import type { Container } from '../../../container';
 import { CancellationError } from '../../../errors';
 import type { CommitSelectedEvent } from '../../../eventBus';
 import { PlusFeatures } from '../../../features';
+import { executeGitCommand } from '../../../git/actions';
 import * as BranchActions from '../../../git/actions/branch';
 import {
 	getOrderedComparisonRefs,
@@ -96,7 +98,7 @@ import { gate } from '../../../system/decorators/gate';
 import { debug, log } from '../../../system/decorators/log';
 import type { Deferrable } from '../../../system/function';
 import { debounce, disposableInterval } from '../../../system/function';
-import { find, last, map } from '../../../system/iterable';
+import { count, find, last, map } from '../../../system/iterable';
 import { updateRecordValue } from '../../../system/object';
 import {
 	getSettledValue,
@@ -116,6 +118,7 @@ import type { ConnectionStateChangeEvent } from '../../integrations/integrationS
 import type {
 	BranchState,
 	DidChangeRefsVisibilityParams,
+	DidGetCountParams,
 	DidGetRowHoverParams,
 	DidSearchParams,
 	DoubleClickedParams,
@@ -188,6 +191,7 @@ import {
 	DidSearchNotification,
 	DoubleClickedCommandType,
 	EnsureRowRequest,
+	GetCountsRequest,
 	GetMissingAvatarsCommand,
 	GetMissingRefsMetadataCommand,
 	GetMoreRowsCommand,
@@ -611,6 +615,7 @@ export class GraphWebviewProvider implements WebviewProvider<State, State, Graph
 				this.updateColumns(compactGraphColumnsSettings),
 			),
 
+			this.host.registerWebviewCommand('gitlens.graph.openInWorktree', this.openInWorktree),
 			this.host.registerWebviewCommand('gitlens.graph.openWorktree', this.openWorktree),
 			this.host.registerWebviewCommand<GraphItemContext>('gitlens.graph.openWorktreeInNewWindow', item =>
 				this.openWorktree(item, { location: 'newWindow' }),
@@ -676,6 +681,9 @@ export class GraphWebviewProvider implements WebviewProvider<State, State, Graph
 			case EnsureRowRequest.is(e):
 				void this.onEnsureRowRequest(EnsureRowRequest, e);
 				break;
+			case GetCountsRequest.is(e):
+				void this.onGetCounts(GetCountsRequest, e);
+				break;
 			case GetMissingAvatarsCommand.is(e):
 				void this.onGetMissingAvatars(e.params);
 				break;
@@ -716,6 +724,24 @@ export class GraphWebviewProvider implements WebviewProvider<State, State, Graph
 				this.onSelectionChanged(e.params);
 				break;
 		}
+	}
+	private async onGetCounts<T extends typeof GetCountsRequest>(requestType: T, msg: IpcCallMessageType<T>) {
+		let counts: DidGetCountParams;
+		if (this._graph != null) {
+			const tags = await this.container.git.getTags(this._graph.repoPath);
+			counts = {
+				branches: count(this._graph.branches?.values(), b => !b.remote),
+				remotes: this._graph.remotes.size,
+				stashes: this._graph.stashes?.size,
+				// Subtract the default worktree
+				worktrees: this._graph.worktrees != null ? this._graph.worktrees.length - 1 : undefined,
+				tags: tags.values.length,
+			};
+		} else {
+			counts = undefined;
+		}
+
+		void this.host.respond(requestType, msg, counts);
 	}
 
 	updateGraphConfig(params: UpdateGraphConfigurationParams) {
@@ -2158,6 +2184,7 @@ export class GraphWebviewProvider implements WebviewProvider<State, State, Graph
 			scrollMarkerTypes: this.getScrollMarkerTypes(),
 			showGhostRefsOnRowHover: configuration.get('graph.showGhostRefsOnRowHover'),
 			showRemoteNamesOnRefs: configuration.get('graph.showRemoteNames'),
+			sidebar: configuration.get('graph.sidebar.enabled') ?? true,
 		};
 		return config;
 	}
@@ -2983,7 +3010,7 @@ export class GraphWebviewProvider implements WebviewProvider<State, State, Graph
 			sha = await this.container.git.resolveReference(ref.repoPath, sha, undefined, { force: true });
 		}
 
-		return executeCommand<CopyShaToClipboardCommandArgs>(Commands.CopyShaToClipboard, {
+		return executeCommand<CopyShaToClipboardCommandArgs, void>(Commands.CopyShaToClipboard, {
 			sha: sha,
 		});
 	}
@@ -3070,7 +3097,7 @@ export class GraphWebviewProvider implements WebviewProvider<State, State, Graph
 		if (ref == null) return Promise.resolve();
 
 		const { title, description } = splitGitCommitMessage(ref.message);
-		return executeCommand<CreatePatchCommandArgs>(Commands.CreateCloudPatch, {
+		return executeCommand<CreatePatchCommandArgs, void>(Commands.CreateCloudPatch, {
 			to: ref.ref,
 			repoPath: ref.repoPath,
 			title: title,
@@ -3485,6 +3512,21 @@ export class GraphWebviewProvider implements WebviewProvider<State, State, Graph
 	}
 
 	@log()
+	private async openInWorktree(item?: GraphItemContext) {
+		if (isGraphItemRefContext(item, 'branch')) {
+			const { ref } = item.webviewItemValue;
+			await executeGitCommand({
+				command: 'switch',
+				state: {
+					repos: ref.repoPath,
+					reference: ref,
+					skipWorktreeConfirmations: true,
+				},
+			});
+		}
+	}
+
+	@log()
 	private async openWorktree(item?: GraphItemContext, options?: { location?: OpenWorkspaceLocation }) {
 		if (isGraphItemRefContext(item, 'branch')) {
 			const { ref } = item.webviewItemValue;
@@ -3709,8 +3751,15 @@ async function formatRepositories(repositories: Repository[]): Promise<GraphRepo
 				id: r.id,
 				name: r.name,
 				path: r.path,
+				provider: remote?.provider
+					? {
+							name: remote.provider.name,
+							connected: connected,
+							icon: remote.provider.icon === 'remote' ? 'cloud' : remote.provider.icon,
+							url: remote.provider.url({ type: RemoteResourceType.Repo }),
+					  }
+					: undefined,
 				isVirtual: r.provider.virtual,
-				isConnected: connected,
 			};
 		}),
 	);

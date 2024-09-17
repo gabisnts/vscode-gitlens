@@ -839,6 +839,14 @@ button:not([disabled]),
 			content: '\eb60';
 		}
 	}
+
+	&--worktree {
+		&::before {
+			// glicon-repositories-view
+			font-family: glicons;
+			content: '\f10e';
+		}
+	}
 }
 
 .titlebar {
@@ -919,7 +927,7 @@ gl-feature-gate gl-feature-badge {
 		flex-direction: column;
 		height: calc(100vh - 2px); // shoot me -- the 2px is to stop the vertical scrollbar from showing up
 		gap: 0;
-		padding: 0.2rem 0.2rem 0;
+		padding: 0.1rem;
 	}
 
 	&__banners {
@@ -945,7 +953,6 @@ gl-feature-gate gl-feature-badge {
 		flex: none;
 		z-index: 101;
 		position: relative;
-		margin: -1px -1px 0 -1px;
 	}
 
 	&__footer {
@@ -956,6 +963,7 @@ gl-feature-gate gl-feature-badge {
 		flex: 1 1 auto;
 		overflow: hidden;
 		position: relative;
+		display: flex;
 	}
 
 	&__main.is-gated {
@@ -963,6 +971,16 @@ gl-feature-gate gl-feature-badge {
 		pointer-events: none;
 	}
 }
+
+.gk-graph:not(.ref-zone):not([role='tooltip']) {
+	flex: 1 1 auto;
+	position: relative;
+}
+
+// Add when graph ref-zone "container" changes
+// .gk-graph.ref-zone {
+// 	position: absolute;
+// }
 
 .gk-graph .graph-header {
 	& .resizable-handle.horizontal {
@@ -973,6 +991,19 @@ gl-feature-gate gl-feature-badge {
 		width: var(--sash-size) !important;
 		height: 100vh !important;
 		z-index: 1000;
+
+		&:after {
+			content: '';
+			border-left: 1px solid var(--titlebar-fg);
+			position: absolute;
+			top: 0.3rem;
+			left: 0.1rem;
+			height: 1.6rem;
+			width: var(--sash-size);
+			opacity: 0.3;
+
+			transition: border-color 0.1s ease-out;
+		}
 
 		&:before {
 			content: '';
@@ -992,6 +1023,11 @@ gl-feature-gate gl-feature-badge {
 			&:before {
 				transition-delay: 0.2s;
 				background-color: var(--vscode-sash-hoverBorder);
+			}
+
+			&:after {
+				transition-delay: 0.2s;
+				border-left-color: var(--vscode-sash-hoverBorder);
 			}
 		}
 

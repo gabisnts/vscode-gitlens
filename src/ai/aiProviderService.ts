@@ -1,13 +1,7 @@
 import type { CancellationToken, Disposable, MessageItem, ProgressOptions, QuickInputButton } from 'vscode';
 import { env, ThemeIcon, Uri, window } from 'vscode';
-import type {
-	AIGenerateDraftEvent,
-	AIModels,
-	AIProviders,
-	Sources,
-	SupportedAIModels,
-	TelemetryEvents,
-} from '../constants';
+import type { AIModels, AIProviders, SupportedAIModels } from '../constants.ai';
+import type { AIGenerateDraftEvent, Sources, TelemetryEvents } from '../constants.telemetry';
 import type { Container } from '../container';
 import { CancellationError } from '../errors';
 import type { GitCommit } from '../git/models/commit';
@@ -49,13 +43,11 @@ interface AIProviderConstructor<Provider extends AIProviders = AIProviders> {
 }
 
 const _supportedProviderTypes = new Map<AIProviders, AIProviderConstructor>([
+	...(supportedInVSCodeVersion('language-models') ? [['vscode', VSCodeAIProvider]] : ([] as any)),
 	['openai', OpenAIProvider],
 	['anthropic', AnthropicProvider],
 	['gemini', GeminiProvider],
 ]);
-if (supportedInVSCodeVersion('language-models')) {
-	_supportedProviderTypes.set('vscode', VSCodeAIProvider);
-}
 
 export interface AIProvider<Provider extends AIProviders = AIProviders> extends Disposable {
 	readonly id: Provider;

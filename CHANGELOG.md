@@ -6,26 +6,67 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/) and this p
 
 ## [Unreleased]
 
+### Fixed
+
+- Fixes [#3582](https://github.com/gitkraken/vscode-gitlens/issues/3582) - "Delete Branch" option is sometimes unexpectedly missing
+
+## [15.5.0] - 2024-09-12
+
+### Added
+
+- Adds a `gitlens.views.showCurrentBranchOnTop` setting to specify whether the current branch is shown at the top of the views &mdash; closes [#3520](https://github.com/gitkraken/vscode-gitlens/issues/3520)
+- Adds a sidebar to the _Commit Graph_
+  - Shows counts of branches, remotes, stashes, tags, and worktrees
+  - Clicking an item reveals its corresponding view
+  - Try out this new feature by setting `gitlens.graph.sidebar.enabled` to `true`
+
+### Changed
+
+- Preview access of Launchpad is ending on September 27th
+- Simplifies the _Create Worktree_ command flow by prompting to create a new branch only when necessary &mdash; closes [#3542](https://github.com/gitkraken/vscode-gitlens/issues/3542)
+- Removes the use of VS Code Authentication API for GitKraken accounts
+
+### Fixed
+
+- Fixes [#3514](https://github.com/gitkraken/vscode-gitlens/issues/3514) - Attempting to delete the main worktree's branch causes a invalid prompt to delete the main worktree
+- Fixes [#3518](https://github.com/gitkraken/vscode-gitlens/issues/3518) - Branches in worktrees are no longer collapsed into folder groupings
+
+### Removed
+
+- Removes (disables) legacy "focus" editor
+
+## [15.4.0] - 2024-09-04
+
 ### Added
 
 - Adds better support for branches in worktrees
-  - Changes the branch icon to a "repo" icon when the branch is in a worktree in views and quick pick menus
-  - Adds an _Open in Worktree_ inline and context menu command and an _Open in Worktree in New Window_ context menu command to branches in views and on the _Commit Graph_
+  - Changes the branch icon to a "repo" icon when the branch is in a worktree in views, quick pick menus, and the _Commit Graph_
+  - Adds an _Open in Worktree_ inline and context menu command and an _Open in Worktree in New Window_ context menu command to branches and pull requests in views and on the _Commit Graph_
   - Removes the _Switch to Branch..._ inline and context menu command from branches in views and on the _Commit Graph_ when the branch is in a worktree
+- Adds ability to only search stashes when using `type:stash` (or `is:stash`) in commit search via the _Commit Graph_, _Search & Compare_ view, or the _Search Commits_ command
 - Adds `...` inline command for stashes on the _GitLens Inspect_ view
 - Adds an "up-to-date" indicator dot to the branch icon of branches in views
 - Adds an "alt" _Pull_ command for the inline _Fetch_ command on branches in views
 - Adds an "alt" _Fetch_ command for the inline _Pull_ command on branches in views
 - Adds _Open Comparison on Remote_ command to branch comparisons in views
+- Adds new options to the _Git Delete Worktree_ command to also delete the associated branch along with the worktree
 
 ### Changed
 
 - Improves the branch comparisons in views to automatically select the base or target branch
 - Improves tooltips on branches, remotes, and worktrees in views
+- _Upgrade to Pro_ flows now support redirects back to GitLens
 
 ### Fixed
 
+- Fixes [#3479](https://github.com/gitkraken/vscode-gitlens/issues/3479) - Tooltip flickering
+- Fixes [#3472](https://github.com/gitkraken/vscode-gitlens/issues/3472) - "Compare working tree with.." often flashes open then closes the menu
+- Fixes [#3448](https://github.com/gitkraken/vscode-gitlens/issues/3448) - "Select for Compare" on a Commit/Stash/etc causes the Search and Compare view to be forcibly shown
+- Fixes the _Git Delete Branch_ command when deleting a branch that is open on a worktree by adding a step to delete the branch's worktree first
+- Fixes an issue where pull requests in views could show the wrong comparison with the working tree when using worktrees
 - Fixes _Copy Remote Comparison URL_ command to not open the URL, just copy it
+- Fixes cloud integrations remaining disconnected after disconnecting and reconnecting to a GitKraken account
+- Fixes "switch" deep links sometimes failing to complete in cases where the switch occurs in the current window
 
 ### Removed
 
@@ -5573,7 +5614,9 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/) and this p
 
 - Initial release but still heavily a work in progress.
 
-[unreleased]: https://github.com/gitkraken/vscode-gitlens/compare/v15.3.1...HEAD
+[unreleased]: https://github.com/gitkraken/vscode-gitlens/compare/v15.5.0...HEAD
+[15.5.0]: https://github.com/gitkraken/vscode-gitlens/compare/v15.4.0...gitkraken:v15.5.0
+[15.4.0]: https://github.com/gitkraken/vscode-gitlens/compare/v15.3.1...gitkraken:v15.4.0
 [15.3.1]: https://github.com/gitkraken/vscode-gitlens/compare/v15.3.0...gitkraken:v15.3.1
 [15.3.0]: https://github.com/gitkraken/vscode-gitlens/compare/v15.2.3...gitkraken:v15.3.0
 [15.2.3]: https://github.com/gitkraken/vscode-gitlens/compare/v15.2.2...gitkraken:v15.2.3

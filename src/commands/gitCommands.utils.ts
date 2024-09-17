@@ -1,6 +1,6 @@
-import type { RecentUsage } from '../constants';
+import type { StoredRecentUsage } from '../constants.storage';
 import type { Container } from '../container';
-import { FocusCommand } from '../plus/focus/focus';
+import { LaunchpadCommand } from '../plus/launchpad/launchpad';
 import { configuration } from '../system/configuration';
 import { getContext } from '../system/context';
 import { BranchGitCommand } from './git/branch';
@@ -108,8 +108,8 @@ export class PickCommandStep implements QuickPickStep<QuickCommand> {
 		}
 
 		this.hiddenItems = [];
-		if (args?.command === 'focus') {
-			this.hiddenItems.push(new FocusCommand(container, args));
+		if (args?.command === 'launchpad') {
+			this.hiddenItems.push(new LaunchpadCommand(container, args));
 		}
 	}
 
@@ -146,7 +146,7 @@ export class PickCommandStep implements QuickPickStep<QuickCommand> {
 	private async updateCommandUsage(id: string, timestamp: number) {
 		let usage = this.container.storage.getWorkspace(`gitComandPalette:usage`);
 		if (usage === undefined) {
-			usage = Object.create(null) as RecentUsage;
+			usage = Object.create(null) as StoredRecentUsage;
 		}
 
 		usage[id] = timestamp;

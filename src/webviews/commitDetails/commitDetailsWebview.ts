@@ -8,8 +8,9 @@ import { getAvatarUri } from '../../avatars';
 import type { CopyMessageToClipboardCommandArgs } from '../../commands/copyMessageToClipboard';
 import type { CopyShaToClipboardCommandArgs } from '../../commands/copyShaToClipboard';
 import type { OpenPullRequestOnRemoteCommandArgs } from '../../commands/openPullRequestOnRemote';
-import type { ContextKeys, Sources } from '../../constants';
-import { Commands } from '../../constants';
+import { Commands } from '../../constants.commands';
+import type { ContextKeys } from '../../constants.context';
+import type { Sources } from '../../constants.telemetry';
 import type { Container } from '../../container';
 import type { CommitSelectedEvent } from '../../eventBus';
 import { executeGitCommand } from '../../git/actions';
@@ -754,7 +755,7 @@ export class CommitDetailsWebviewProvider
 		const {
 			pr: { url },
 		} = this.pullRequestContext;
-		return executeCommand<OpenPullRequestOnRemoteCommandArgs>(Commands.OpenPullRequestOnRemote, {
+		return executeCommand<OpenPullRequestOnRemoteCommandArgs, void>(Commands.OpenPullRequestOnRemote, {
 			pr: { url: url },
 			clipboard: clipboard,
 		});
@@ -1689,7 +1690,7 @@ export class CommitDetailsWebviewProvider
 					state: await this.getState(context),
 				});
 			} catch (ex) {
-				Logger.error(scope, ex);
+				Logger.error(ex, scope);
 				debugger;
 			}
 		});
